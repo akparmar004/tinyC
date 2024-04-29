@@ -30,7 +30,7 @@ int arithop(int tok)
 			return A_MULTIPLY;
 		case T_SLASH :
 			return A_DIVIDE;
-		case default:
+		default:
 			fprintf(stderr, "unknown token in arithop() on line %d\n",Line);
 			exit(1);	 
 	}

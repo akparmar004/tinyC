@@ -1,4 +1,2 @@
-parser: main.c scan.c expr.c interp.c tree.c
-	cc -o parser -g main.c scan.c expr.c interp.c tree.c
-	
-
+parser: expr.c interp.c main.c scan.c tree.c
+	cc -o parser -g expr.c interp.c main.c scan.c tree.c

@@ -3,37 +3,34 @@
 #include "decl.h"
 
 
-// Return the position of character c
-// in string s, or -1 if c not found
+//return the position of character c in string s, or -1 if c not found
 static int chrpos(char *s, int c) 
 {
-  char *p;
+  	char *p;
 
-  p = strchr(s, c);
-  return (p ? p - s : -1);
+  	p = strchr(s, c);
+  	return (p ? p - s : -1);
 }
 
-// Get the next character from the input file.
+//get the next character from the input file.
 static int next(void) 
 {
-  int c;
+  	int c;
 
-  	if (Putback)  	// Use the character put
+  	if (Putback)  	        // Use the character put
   	{
   	 	 c = Putback;	// back if there is one
   	 	 Putback = 0;
   	 	 return c;
   	}
 
-  	c = fgetc(Infile);		// Read from input file
+  	c = fgetc(Infile);	// Read from input file
   	if ('\n' == c)
-  	
-  	
-  		  Line++;			// Increment line count
+  		  Line++;	// Increment line count
   	return c;
 }
 
-// Put back an unwanted character
+//put back an unwanted character
 static void putback(int c) 
 {
   	Putback = c;
@@ -86,7 +83,8 @@ int scan(struct token *t)
 	  switch (c) 
 	  {
 	  	case EOF:
-	  	  return (0);
+	  	  t -> token = T_EOF;
+	  	  return 0;
 	  	case '+':
 	  	  t->token = T_PLUS;
 	  	  break;

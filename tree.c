@@ -1,8 +1,12 @@
-struct ASTnode *mkastnode(int op, struct ASTnode *left, struct ASTnode *right, int intvalue)
-{
-	struct ASTnode *n;
+#include "defs.h"
+#include "data.h"
+#include "decl.h"
 
-	n = (struct ASTnode *)malloc(sizeof(struct ASTnode));
+ast *mkastnode(int op, ast *left, ast *right, int intvalue)
+{
+	ast *n;
+
+	n = (ast *)malloc(sizeof(ast));
 	if(n == NULL)
 	{
 		fprintf(stderr,"Unable to malloc in mkastnode()\n");
@@ -17,3 +21,11 @@ struct ASTnode *mkastnode(int op, struct ASTnode *left, struct ASTnode *right, i
 	return (n);
 }
 
+ast *mkastleaf(int op, int intvalue) {
+  return (mkastnode(op, NULL, NULL, intvalue));
+}
+
+// Make a unary AST node: only one child
+ast *mkastunary(int op, ast *left, int intvalue) {
+  return (mkastnode(op, left, NULL, intvalue));
+}

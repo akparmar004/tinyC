@@ -12,7 +12,7 @@ struct token
 
 enum
 {
-	T_PLUS, T_MINUS, T_STAR,T_SLASH, T_INTLIT
+	T_EOF, T_PLUS, T_MINUS, T_STAR, T_SLASH, T_INTLIT
 };
 
 //AST node types..
@@ -25,7 +25,7 @@ enum
 typedef struct ASTnode
 {
 	int op;
-	struct ASTNode *left;
-	struct ASTNode *right;
+	struct ASTnode *left;
+	struct ASTnode *right;
 	int intvalue;
 } ast;
