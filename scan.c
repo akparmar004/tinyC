@@ -17,16 +17,16 @@ static int next(void)
 {
   	int c;
 
-  	if (Putback)  	        // Use the character put
+  	if(Putback)  	        //use the character put back if there is one
   	{
-  	 	 c = Putback;	// back if there is one
+  	 	 c = Putback;	
   	 	 Putback = 0;
   	 	 return c;
   	}
 
-  	c = fgetc(Infile);	// Read from input file
-  	if ('\n' == c)
-  		  Line++;	// Increment line count
+  	c = fgetc(Infile);	//read from input file
+  	if('\n' == c)
+  		  Line++;	//increment line count
   	return c;
 }
 
@@ -51,35 +51,33 @@ static int skip(void)
   	return (c);
 }
 
-// Scan and return an integer literal
-// value from the input file.
+//scan and return an integer literal value from the input file.
 static int scanint(int c) 
 {
 	  int k, val = 0;
 	
-	  // Convert each character into an int value
+	  //convert each character into an int value
 	    while ((k = chrpos("0123456789", c)) >= 0) 
 	    {
 	    	val = val * 10 + k;
 	    	c = next();
   	    }
 
- 	// We hit a non-integer character, put it back.
+ 	//we get a non-integer character, put it back.
  	putback(c);
   	return val;
 }
 
-// Scan and return the next token found in the input.
-// Return 1 if token valid, 0 if no tokens left.
+//scan and return the next token found in the input.
+//return 1 if token valid, 0 if no tokens left.
 int scan(struct token *t) 
 {
 	  int c;
 	
-	  // Skip whitespace
+	  //skip whitespace
 	  c = skip();
 	
-	  // Determine the token based on
-	  // the input character
+	  //determine the token based on the input character
 	  switch (c) 
 	  {
 	  	case EOF:
@@ -99,8 +97,7 @@ int scan(struct token *t)
 	  	  break;
 	  	default:
 		
-	  	    // If it's a digit, scan the
-		    // literal integer value in
+	  	    //if it's a digit then scan the literal integer value in
 		    if (isdigit(c)) 
 		    {
 		    	  t->intvalue = scanint(c);
@@ -112,6 +109,6 @@ int scan(struct token *t)
 		    exit(1);
 		  }
 	
-  // We found a token
+  //we found a token yeah
   return (1);
 }

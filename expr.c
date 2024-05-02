@@ -2,7 +2,7 @@
 #include "data.h"
 #include "decl.h"
 
-static ast *primary(void)
+static ast* primary(void)
 {
 	ast *n;
 	
@@ -13,14 +13,14 @@ static ast *primary(void)
 			scan(&Token);
 			return n;
 		default : 
-			fprintf(stderr,"syntax error on line %d\n",Line);
+			fprintf(stderr,"syntax error on line %d, token %d\n", Line, Token.token);
 			exit(1);
 	}
 } 
 
-int arithop(int tok)
+int arithop(int tokentype)
 {
-	switch(tok)
+	switch(tokentype)
 	{
 		case T_PLUS :
 			return A_ADD;
@@ -31,32 +31,57 @@ int arithop(int tok)
 		case T_SLASH :
 			return A_DIVIDE;
 		default:
-			fprintf(stderr, "unknown token in arithop() on line %d\n",Line);
+			fprintf(stderr, "unknown token in arithop() on line %d, token %d\n",Line,tokentype);
 			exit(1);	 
 	}
 }
 
-ast *binexpr(void)
+//operatoc precedence for each token
+static int OpPrec[] = {0, 10, 10, 20, 20, 0};
+
+//check for binary ope. and return its precedence..
+static int op_precedence(int tokentype)
 {
-	ast *n, *left, *right;
-	int nodetype;
+	int prec = OpPrec[tokentype];
+	if(prec == 0)
+	{
+		fprintf(stderr,"syntex error on line %d, token %d\n", Line, tokentype);
+		exit(1);
+	}
+	return prec;
+}
+
+
+ast *binexpr(int ptp)
+{
+	ast *left, *right;
+	int tokentype;
 	
-	//fetch the token
+	//fetch the token on the left
 	left = primary();
 	
+	tokentype = Token.token;
 	if(Token.token == T_EOF)
 		return left;
+	
+	//while the prece. of this token is more than that of the previous token prec.
+	while(op_precedence(tokentype) > ptp)	
+	{
+		//fetch in the next int lit..
+		scan(&Token);
+
+		//recursively call the binexpr() with the prece. of our token to build a sub tree..
+		right = binexpr(OpPrec[tokentype]);
 		
-	nodetype = arithop(Token.token);
+		//simply join both subtrees 
+		left = mkastnode(arithop(tokentype), left, right, 0);
+
+		//now update the details of the current token..
+		tokentype = Token.token;
+		if(tokentype == T_EOF)
+			return left;
+	}
 	
-	//get the next token..
-	scan(&Token);
-	
-	//recursively get the right hand tree..	
-	right = binexpr();
-	
-	//now build a tree with both sub-trees..
-	n = mkastnode(nodetype,left,right,0);
-	
-	return n;
+	//just return the tree that we have..
+	return left;
 }
