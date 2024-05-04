@@ -1,15 +1,26 @@
-parser: expr.c interp.c main.c scan.c tree.c
-	cc -o parser -g expr.c interp.c main.c scan.c tree.c
-	
-parser2: expr2.c interp.c main.c scan.c tree.c
-	cc -o parser2 -g expr2.c interp.c main.c scan.c tree.c
-	
-test: parser
-	-(./parser input; \
-	 ./parser input2; \
-	 ./parser input3)
+comp1: cg.c expr.c gen.c interp.c main.c scan.c tree.c
+	cc -o comp1 -g cg.c expr.c gen.c interp.c main.c scan.c tree.c
 
-test2: parser2
-	-(./parser2 input; \
-	 ./parser2 input2; \
-	 ./parser2 input3)
+compn: cgn.c expr.c gen.c interp.c main.c scan.c tree.c
+	cc -o compn -g cgn.c expr.c gen.c interp.c main.c scan.c tree.c
+
+clean:
+	rm -f comp1 compn *.o *.s out
+
+test: comp1
+	./comp1 input
+	cc -o out out.s
+	./out
+	./comp1 input2
+	cc -o out out.s
+	./out
+
+testn: compn
+	./compn input
+	nasm -f elf64 out.s
+	cc -no-pie -o out out.o
+	./out
+	./compn input2
+	nasm -f elf64 out.s
+	cc -no-pie -o out out.o
+	./out
