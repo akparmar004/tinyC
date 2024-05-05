@@ -7,6 +7,7 @@
 //list of available regis.. and their names
 static int freereg[4];
 static char *reglist[4] = { "%r8", "%r9", "%r10", "%r11" };
+static char *breglist[4] = {"%r8b", "%r9b", "%r10b", "%r11b"};
 
 //set all registers as available
 void freeall_registers(void) 
@@ -41,8 +42,8 @@ static void free_register(int reg)
 //print out the assembly preamble
 void cgpreamble() 
 {
-  	freeall_registers();
-  	fputs("\t.text\n"
+  freeall_registers();
+  fputs("\t.text\n"
 	".LC0:\n"
 	"\t.string\t\"%d\\n\"\n"
 	"printint:\n"
@@ -73,7 +74,7 @@ void cgpostamble()
 //load an integer literal value into a regs... return the number of the reg..
 int cgloadint(int value) 
 {
-  	// Get a new register
+  	//get a new register
   	int r = alloc_register();
 
   	//print out the code to initialise it
@@ -84,15 +85,15 @@ int cgloadint(int value)
 //load a value from a variable into a register. return the number of the register
 int cgloadglob(char *identifier) 
 {
-  	// Get a new register
+  	//get a new register
   	int r = alloc_register();
 
-  	//print out the code to initialise it
+  	//print out code to initialise it
   	fprintf(Outfile, "\tmovq\t%s(\%%rip), %s\n", identifier, reglist[r]);
   	return (r);
 }
 
-//add two registers together and return the number of the register with the result
+//add two registers together and return number of register with result
 int cgadd(int r1, int r2) 
 {
   	fprintf(Outfile, "\taddq\t%s, %s\n", reglist[r1], reglist[r2]);
@@ -108,39 +109,77 @@ int cgsub(int r1, int r2)
   	return (r1);
 }
 
-// Multiply two registers together and return
-// the number of the register with the result
-int cgmul(int r1, int r2) {
-  fprintf(Outfile, "\timulq\t%s, %s\n", reglist[r1], reglist[r2]);
-  free_register(r1);
-  return (r2);
+//multiply two registers together and return number of regs.. with the result
+int cgmul(int r1, int r2) 
+{
+  	fprintf(Outfile, "\timulq\t%s, %s\n", reglist[r1], reglist[r2]);
+  	free_register(r1);
+  	return (r2);
 }
 
-// Divide the first register by the second and
-// return the number of the register with the result
-int cgdiv(int r1, int r2) {
-  fprintf(Outfile, "\tmovq\t%s,%%rax\n", reglist[r1]);
-  fprintf(Outfile, "\tcqo\n");
-  fprintf(Outfile, "\tidivq\t%s\n", reglist[r2]);
-  fprintf(Outfile, "\tmovq\t%%rax,%s\n", reglist[r1]);
-  free_register(r2);
-  return (r1);
+//divide the first register by the second and return the number of the register with the result
+int cgdiv(int r1, int r2) 
+{
+  	fprintf(Outfile, "\tmovq\t%s,%%rax\n", reglist[r1]);
+  	fprintf(Outfile, "\tcqo\n");
+  	fprintf(Outfile, "\tidivq\t%s\n", reglist[r2]);
+  	fprintf(Outfile, "\tmovq\t%%rax,%s\n", reglist[r1]);
+  	free_register(r2);
+  	return (r1);
 }
 
-// Call printint() with the given register
-void cgprintint(int r) {
-  fprintf(Outfile, "\tmovq\t%s, %%rdi\n", reglist[r]);
-  fprintf(Outfile, "\tcall\tprintint\n");
-  free_register(r);
+//call printint() with the given register
+void cgprintint(int r) 
+{
+  	fprintf(Outfile, "\tmovq\t%s, %%rdi\n", reglist[r]);
+  	fprintf(Outfile, "\tcall\tprintint\n");
+  	free_register(r);
 }
 
-// Store a register's value into a variable
-int cgstorglob(int r, char *identifier) {
-  fprintf(Outfile, "\tmovq\t%s, %s(\%%rip)\n", reglist[r], identifier);
-  return (r);
+//store a register's value into a variable
+int cgstorglob(int r, char *identifier) 
+{
+  	fprintf(Outfile, "\tmovq\t%s, %s(\%%rip)\n", reglist[r], identifier);
+  	return (r);
 }
 
-// Generate a global symbol
-void cgglobsym(char *sym) {
-  fprintf(Outfile, "\t.comm\t%s,8,8\n", sym);
+//generate a global symbol
+void cgglobsym(char *sym) 
+{
+  	fprintf(Outfile, "\t.comm\t%s,8,8\n", sym);
+}
+
+//compare two regis..
+static int cgcompare(int r1, int r2, char *how)
+{
+	fprintf(Outfile, "\tcmpq\t%s, %s\n", reglist[r2], reglist[r1]);
+  	fprintf(Outfile, "\t%s\t%s\n", how, breglist[r2]);
+  	fprintf(Outfile, "\tandq\t$255,%s\n", reglist[r2]);
+  	free_register(r1);
+  	return (r2);
+}
+
+int cgequal(int r1, int r2)
+{
+       	return(cgcompare(r1, r2, "sete")); 
+}
+int cgnotequal(int r1, int r2) 
+{
+       	return(cgcompare(r1, r2, "setne")); 
+}
+int cglessthan(int r1, int r2) 
+{ 
+       	return(cgcompare(r1, r2, "setl")); 
+}
+int cggreaterthan(int r1, int r2) 
+{
+        return(cgcompare(r1, r2, "setg")); 
+}
+int cglessequal(int r1, int r2) 
+{
+       	return(cgcompare(r1, r2, "setle")); 
+}
+int cggreaterequal(int r1, int r2) 
+{ 
+	return(cgcompare(r1, r2, "setge")); 
 }

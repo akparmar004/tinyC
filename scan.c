@@ -2,20 +2,20 @@
 #include "data.h"
 #include "decl.h"
 
-// Lexical scanning
-// Copyright (c) 2019 Warren Toomey, GPL3
+//lexical scanning
 
-// Return the position of character c
-// in string s, or -1 if c not found
-static int chrpos(char *s, int c) {
-  char *p;
+//return the position of character c in string s, or -1 if c not found
+static int chrpos(char *s, int c) 
+{
+  	char *p;
 
-  p = strchr(s, c);
-  return (p ? p - s : -1);
+  	p = strchr(s, c);
+  	return (p ? p - s : -1);
 }
 
-// Get the next character from the input file.
-static int next(void) {
+//get the next character from the input file.
+static int next(void) 
+{
   int c;
 
   if (Putback) {		// Use the character put
@@ -135,7 +135,38 @@ int scan(struct token *t) {
     t->token = T_SEMI;
     break;
   case '=':
-    t->token = T_EQUALS;
+    if((c = next()) == '=')
+    {
+	    t -> token = T_EQ;
+    }
+    else
+    {
+	    putback(c);
+	    t -> token = T_ASSIGN;
+    }
+    break;
+  case '!':
+    if ((c = next()) == '=') {
+      t->token = T_NE;
+    } else {
+      fatalc("Unrecognised character", c);
+    }
+    break;
+  case '<':
+    if ((c = next()) == '=') {
+      t->token = T_LE;
+    } else {
+      putback(c);
+      t->token = T_LT;
+    }
+    break;
+  case '>':
+    if ((c = next()) == '=') {
+      t->token = T_GE;
+    } else {
+      putback(c);
+      t->token = T_GT;
+    }
     break;
   default:
 

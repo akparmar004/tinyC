@@ -7,21 +7,13 @@ comp1: $(SRCS)
 compn: $(SRCN)
 	cc -o compn -g $(SRCN)
 
-
-test: comp1 input input2
-	./comp1 input
-	cc -o out out.s
-	./out
-	./comp1 input2
+test: comp1 input4
+	./comp1 input4
 	cc -o out out.s
 	./out
 
-testn: compn input input2
-	./compn input
-	nasm -f elf64 out.s
-	cc -no-pie -o out out.o
-	./out
-	./compn input2
+testn: compn input4
+	./compn input4
 	nasm -f elf64 out.s
 	cc -no-pie -o out out.o
 	./out

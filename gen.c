@@ -24,6 +24,18 @@ int genAST(ast *n, int reg)
 			return (cgmul(leftreg,rightreg));
 		case A_DIVIDE : 	
 			return (cgdiv(leftreg,rightreg));
+		case A_EQ:
+			return (cgequal(leftreg, rightreg));
+  		case A_NE:
+    			return (cgnotequal(leftreg, rightreg));
+  		case A_LT:
+    			return (cglessthan(leftreg, rightreg));
+  		case A_GT:
+    			return (cggreaterthan(leftreg, rightreg));
+  		case A_LE:
+    			return (cglessequal(leftreg, rightreg));
+  		case A_GE:
+    			return (cggreaterequal(leftreg, rightreg));
 		case A_INTLIT : 
 			return (cgloadint(n->v.intvalue));
 		case A_IDENT :

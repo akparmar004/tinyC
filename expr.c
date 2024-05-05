@@ -29,23 +29,18 @@ static ast* primary(void)
 
 int arithop(int tokentype)
 {
-	switch(tokentype)
-	{
-		case T_PLUS :
-			return A_ADD;
-		case T_MINUS :
-			return A_SUBTRACT;
-		case T_STAR :
-			return A_MULTIPLY;
-		case T_SLASH :
-			return A_DIVIDE;
-		default:
-			fatald("Syntax error, token", tokentype);		
-	}
+	if(tokentype > T_EOF && tokentype < T_INTLIT)
+		return tokentype;
+	
+	fatald("Syntax error, token", tokentype);
 }
 
 //operatoc precedence for each token
-static int OpPrec[] = {0, 10, 10, 20, 20, 0};
+static int OpPrec[] = {0, 10, 10,  //T_EOF,T_PLUS,T_MINUS
+       	20, 20, 		   //T_STAR, T_SLASH		
+	30, 30,			   //T_EQ, T_NE
+	40, 40, 40, 40		   //T_LT, T_GT, T_LE, T_GE
+};
 
 //check for binary ope. and return its precedence..
 static int op_precedence(int tokentype)
@@ -78,7 +73,7 @@ ast *binexpr(int ptp)
 		scan(&Token);
 
 		//recursively call the binexpr() with the prece. of our token to build a sub tree..
-		right = binexpr(OpPrec[tokentype]);
+		right = binexpr(OpPrec[tokentype]);	
 		
 		//simply join both subtrees 
 		left = mkastnode(arithop(tokentype), left, right, 0);

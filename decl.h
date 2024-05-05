@@ -1,6 +1,6 @@
 
-// Function prototypes for all compiler files
-// Copyright (c) 2019 Warren Toomey, GPL3
+//function prototypes for all compiler files
+
 // scan.c
 int scan(struct token *t);
 
@@ -30,6 +30,13 @@ int cgdiv(int r1, int r2);
 void cgprintint(int r);
 int cgstorglob(int r, char *identifier);
 void cgglobsym(char *sym);
+int cgequal(int r1, int r2);
+int cgnotequal(int r1, int r2);
+int cglessthan(int r1, int r2);
+int cggreaterthan(int r1, int r2);
+int cglessequal(int r1, int r2);
+int cggreaterequal(int r1, int r2);
+
 
 // expr.c
 ast *binexpr(int ptp);
