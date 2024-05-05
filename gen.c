@@ -3,7 +3,7 @@
 #include "decl.h"
 
 //this func will generate assembly code recursively..
-static int genAST(ast *n)
+int genAST(ast *n)
 {
 	int leftreg, rightreg;
 	
@@ -32,12 +32,19 @@ static int genAST(ast *n)
 	}	
 }
 
-void generatecode(ast *n) {
-  	int reg;
-
+void genpreamble() 
+{
   	cgpreamble();
-  	reg= genAST(n);
-  	cgprintint(reg);
+}
+void genpostamble() 
+{
   	cgpostamble();
 }
-
+void genfreeregs() 
+{
+  	freeall_registers();
+}
+void genprintint(int reg)
+{
+  	cgprintint(reg);
+}

@@ -68,11 +68,47 @@ static int scanint(int c)
   	return val;
 }
 
+static int scanident(int c, char *buf, int lim)
+{
+	int i = 0;
+
+	while(isalpha(c) || isdigit(c) || '_' == c)
+	{
+		if(lim - 1 == i)
+		{	
+			printf("identifier too long on line %d\n", Line);
+			exit(1);
+		}
+		else if(i < lim - 1)
+		{
+			buf[i++] = c;
+		}
+		c = next();
+	}
+
+	putback(c);
+	buf[i] = '\0';
+	return i;
+}
+
+static int keyword(char *s)
+{
+		switch(*s)
+		{
+			case 'p':
+				if(!strcmp(s,"print"))
+					return T_PRINT;
+				break;
+		}
+		return 0;
+}
+
+
 //scan and return the next token found in the input.
 //return 1 if token valid, 0 if no tokens left.
 int scan(struct token *t) 
 {
-	  int c;
+	  int c, tokentype;
 	
 	  //skip whitespace
 	  c = skip();
@@ -95,6 +131,9 @@ int scan(struct token *t)
 	  	case '/':
 	  	  t->token = T_SLASH;
 	  	  break;
+		case ';':
+		  t->token = T_SEMI;
+		  break;
 	  	default:
 		
 	  	    //if it's a digit then scan the literal integer value in
@@ -103,6 +142,20 @@ int scan(struct token *t)
 		    	  t->intvalue = scanint(c);
 		    	  t->token = T_INTLIT;
 		    	  break;
+		    }
+		    else if(isalpha(c) || '_' == c)
+		    {
+			    scanident(c, Text, TEXTLEN);
+
+			    //if it's a recognised keyword, return that token
+			    if (tokentype = keyword(Text)) 
+			    {
+	  			    t->token = tokentype;
+	  			    break;
+			    }
+			    //not a recognised keyword, so an error for now
+			    printf("Unrecognised symbol %s on line %d\n", Text, Line);
+		            exit(1);
 		    }
 		
 		    printf("Unrecognised character %c on line %d\n", c, Line);

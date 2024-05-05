@@ -24,7 +24,6 @@ static void usage(char *prog)
 //main program: check arguments and print a usage if we don't have an argument. Open up the input file and call scanfile() to scan the tokens in it.
 void main(int argc, char *argv[]) 
 {
-	ast *n;
 	if(argc != 2)
     		usage(argv[0]);
 
@@ -44,11 +43,11 @@ void main(int argc, char *argv[])
     		exit(1);
   	}
 
-	scan(&Token);
-	n = binexpr(0);
-	printf("%d\n",interpretAST(n));
-        generatecode(n);
+	scan(&Token);			//get the first token from input
+	genpreamble();			//output the preamble
+	statements();			//parse the statements in the input..
+	genpostamble();			//output the postamble
 
-	fclose(Outfile);
+	fclose(Outfile);		//close the output file.. and exit..
 	exit(0);
 }

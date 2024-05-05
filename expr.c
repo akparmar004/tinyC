@@ -61,7 +61,7 @@ ast *binexpr(int ptp)
 	left = primary();
 	
 	tokentype = Token.token;
-	if(Token.token == T_EOF)
+	if(tokentype == T_SEMI)
 		return left;
 	
 	//while the prece. of this token is more than that of the previous token prec.
@@ -78,7 +78,7 @@ ast *binexpr(int ptp)
 
 		//now update the details of the current token..
 		tokentype = Token.token;
-		if(tokentype == T_EOF)
+		if(tokentype == T_SEMI)
 			return left;
 	}
 	

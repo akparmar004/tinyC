@@ -38,11 +38,10 @@ static void free_register(int reg)
 }
 
 //print out the assembly preamble..
-void cgpreamble()
+void cgpreamble() 
 {
   freeall_registers();
-  fputs(
-	"\t.text\n"
+  fputs("\t.text\n"
 	".LC0:\n"
 	"\t.string\t\"%d\\n\"\n"
 	"printint:\n"
@@ -61,20 +60,13 @@ void cgpreamble()
 	"\n"
 	"\t.globl\tmain\n"
 	"\t.type\tmain, @function\n"
-	"main:\n"
-	"\tpushq\t%rbp\n"
-	"\tmovq	%rsp, %rbp\n",
-  Outfile);
+	"main:\n" "\tpushq\t%rbp\n" "\tmovq	%rsp, %rbp\n", Outfile);
 }
 
 //print out the assembly postamble
 void cgpostamble()
 {
-  	fputs(
-		"\tmovl	$0, %eax\n"
-		"\tpopq	%rbp\n"
-		"\tret\n",
-  	Outfile);
+  	fputs("\tmovl $0, %eax\n" "\tpopq %rbp\n" "\tret\n",Outfile);
 }
 
 //this func. will load an int lit value into reg..
@@ -130,4 +122,4 @@ void cgprintint(int r)
   	fprintf(Outfile, "\tcall\tprintint\n");
   	free_register(r);
 }
-
+	

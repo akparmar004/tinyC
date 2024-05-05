@@ -45,8 +45,7 @@ static void free_register(int reg)
 void cgpreamble()
 {
   	freeall_registers();
-  	fputs(
-	"\tglobal\tmain\n"
+  fputs("\tglobal\tmain\n"
 	"\textern\tprintf\n"
 	"\tsection\t.text\n"
 	"LC0:\tdb\t\"%d\",10,0\n"
@@ -64,20 +63,13 @@ void cgpreamble()
 	"\tleave\n"
 	"\tret\n"
 	"\n"
-	"main:\n"
-	"\tpush\trbp\n"
-	"\tmov	rbp, rsp\n",
-  		Outfile);
+	"main:\n" "\tpush\trbp\n" "\tmov rbp, rsp\n", Outfile);
 }
 
 //print out the assembly postamble
 void cgpostamble()
 {
-  	fputs(
-		"\tmov	eax, 0\n"
-		"\tpop	rbp\n"
-		"\tret\n",
-  	Outfile);
+  	fputs("\tmov eax, 0\n" "\tpop rbp\n" "\tret\n", Outfile);
 }
 
 //load an integer literal value into a regs.. return the number of the regis..
