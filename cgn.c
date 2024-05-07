@@ -147,37 +147,49 @@ void cgglobsym(char *sym)
   	fprintf(Outfile, "\tcommon\t%s 8:8\n", sym);
 }
 
-//compare two registers.
-static int cgcompare(int r1, int r2, char *how) 
-{
-  	fprintf(Outfile, "\tcmp\t%s, %s\n", reglist[r1], reglist[r2]);
-  	fprintf(Outfile, "\t%s\t%s\n", how, breglist[r2]);
-  	fprintf(Outfile, "\tand\t%s, 255\n", reglist[r2]);
-  	free_register(r1);
-  	return (r2);
+
+// List of comparison instructions,
+// in AST order: A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE
+static char *cmplist[] =
+  { "sete", "setne", "setl", "setg", "setle", "setge" };
+
+// Compare two registers and set if true.
+int cgcompare_and_set(int ASTop, int r1, int r2) {
+
+  // Check the range of the AST operation
+  if (ASTop < A_EQ || ASTop > A_GE)
+    fatal("Bad ASTop in cgcompare_and_set()");
+
+  fprintf(Outfile, "\tcmp\t%s, %s\n", reglist[r1], reglist[r2]);
+  fprintf(Outfile, "\t%s\t%s\n", cmplist[ASTop - A_EQ], breglist[r2]);
+  fprintf(Outfile, "\tmovzb\t%s, %s\n", reglist[r2], breglist[r2]);
+  free_register(r1);
+  return (r2);
 }
 
-int cgequal(int r1, int r2) 
-{
-       	return(cgcompare(r1, r2, "sete")); 
+// Generate a label
+void cglabel(int l) {
+  fprintf(Outfile, "L%d:\n", l);
 }
-int cgnotequal(int r1, int r2) 
-{
-       	return(cgcompare(r1, r2, "setne")); 
+
+// Generate a jump to a label
+void cgjump(int l) {
+  fprintf(Outfile, "\tjmp\tL%d\n", l);
 }
-int cglessthan(int r1, int r2) 
-{
-       	return(cgcompare(r1, r2, "setl")); 
-}
-int cggreaterthan(int r1, int r2) 
-{
-       	return(cgcompare(r1, r2, "setg")); 
-}
-int cglessequal(int r1, int r2) 
-{
-       	return(cgcompare(r1, r2, "setle")); 
-}
-int cggreaterequal(int r1, int r2)
-{
-       	return(cgcompare(r1, r2, "setge")); 
+
+// List of inverted jump instructions,
+// in AST order: A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE
+static char *invcmplist[] = { "jne", "je", "jge", "jle", "jg", "jl" };
+
+// Compare two registers and jump if false.
+int cgcompare_and_jump(int ASTop, int r1, int r2, int label) {
+
+  // Check the range of the AST operation
+  if (ASTop < A_EQ || ASTop > A_GE)
+    fatal("Bad ASTop in cgcompare_and_set()");
+
+  fprintf(Outfile, "\tcmp\t%s, %s\n", reglist[r1], reglist[r2]);
+  fprintf(Outfile, "\t%s\tL%d\n", invcmplist[ASTop - A_EQ], label);
+  freeall_registers();
+  return (NOREG);
 }

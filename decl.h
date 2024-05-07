@@ -1,16 +1,18 @@
 
-//function prototypes for all compiler files
-
+// Function prototypes for all compiler files
+// Copyright (c) 2019 Warren Toomey, GPL3
 // scan.c
 int scan(struct token *t);
 
 // tree.c
-ast *mkastnode(int op, ast *left, ast *right, int intvalue);
-ast *mkastleaf(int op, int intvalue);
-ast *mkastunary(int op, ast *left, int intvalue);
+struct ASTnode *mkastnode(int op, struct ASTnode *left,
+			  struct ASTnode *mid,
+			  struct ASTnode *right, int intvalue);
+struct ASTnode *mkastleaf(int op, int intvalue);
+struct ASTnode *mkastunary(int op, struct ASTnode *left, int intvalue);
 
 // gen.c
-int genAST(ast *n, int reg);
+int genAST(struct ASTnode *n, int reg, int parentASTop);
 void genpreamble();
 void genpostamble();
 void genfreeregs();
@@ -30,23 +32,24 @@ int cgdiv(int r1, int r2);
 void cgprintint(int r);
 int cgstorglob(int r, char *identifier);
 void cgglobsym(char *sym);
-int cgequal(int r1, int r2);
-int cgnotequal(int r1, int r2);
-int cglessthan(int r1, int r2);
-int cggreaterthan(int r1, int r2);
-int cglessequal(int r1, int r2);
-int cggreaterequal(int r1, int r2);
-
+int cgcompare_and_set(int ASTop, int r1, int r2);
+int cgcompare_and_jump(int ASTop, int r1, int r2, int label);
+void cglabel(int l);
+void cgjump(int l);
 
 // expr.c
-ast *binexpr(int ptp);
+struct ASTnode *binexpr(int ptp);
 
 // stmt.c
-void statements(void);
+struct ASTnode *compound_statement(void);
 
 // misc.c
 void match(int t, char *what);
 void semi(void);
+void lbrace(void);
+void rbrace(void);
+void lparen(void);
+void rparen(void);
 void ident(void);
 void fatal(char *s);
 void fatals(char *s1, char *s2);
