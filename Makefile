@@ -7,6 +7,9 @@ comp1: $(SRCS)
 compn: $(SRCN)
 	cc -o compn -g $(SRCN)
 
+clean:
+	rm -f comp1 compn *.o *.s out
+
 test: comp1 input05
 	./comp1 input05
 	cc -o out out.s

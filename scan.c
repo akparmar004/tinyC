@@ -2,20 +2,20 @@
 #include "data.h"
 #include "decl.h"
 
-//lexical scanning
+// Lexical scanning
+// Copyright (c) 2019 Warren Toomey, GPL3
 
-//return the position of character c in string s, or -1 if c not found
-static int chrpos(char *s, int c) 
-{
-  	char *p;
+// Return the position of character c
+// in string s, or -1 if c not found
+static int chrpos(char *s, int c) {
+  char *p;
 
-  	p = strchr(s, c);
-  	return (p ? p - s : -1);
+  p = strchr(s, c);
+  return (p ? p - s : -1);
 }
 
-//get the next character from the input file.
-static int next(void) 
-{
+// Get the next character from the input file.
+static int next(void) {
   int c;
 
   if (Putback) {		// Use the character put
@@ -93,20 +93,26 @@ static int scanident(int c, char *buf, int lim) {
 // to waste time strcmp()ing against all the keywords.
 static int keyword(char *s) {
   switch (*s) {
-  case 'i':
-    if (!strcmp(s, "int"))
-      return (T_INT);
-    break;
-  case 'p':
-    if (!strcmp(s, "print"))
-      return (T_PRINT);
-    break;
+    case 'e':
+      if (!strcmp(s, "else"))
+	return (T_ELSE);
+      break;
+    case 'i':
+      if (!strcmp(s, "if"))
+	return (T_IF);
+      if (!strcmp(s, "int"))
+	return (T_INT);
+      break;
+    case 'p':
+      if (!strcmp(s, "print"))
+	return (T_PRINT);
+      break;
   }
   return (0);
 }
 
-//scan and return the next token found in the input.
-//return 1 if token valid, 0 if no tokens left.
+// Scan and return the next token found in the input.
+// Return 1 if token valid, 0 if no tokens left.
 int scan(struct token *t) {
   int c, tokentype;
 
@@ -116,81 +122,90 @@ int scan(struct token *t) {
   // Determine the token based on
   // the input character
   switch (c) {
-  case EOF:
-    t->token = T_EOF;
-    return (0);
-  case '+':
-    t->token = T_PLUS;
-    break;
-  case '-':
-    t->token = T_MINUS;
-    break;
-  case '*':
-    t->token = T_STAR;
-    break;
-  case '/':
-    t->token = T_SLASH;
-    break;
-  case ';':
-    t->token = T_SEMI;
-    break;
-  case '=':
-    if((c = next()) == '=')
-    {
-	    t -> token = T_EQ;
-    }
-    else
-    {
-	    putback(c);
-	    t -> token = T_ASSIGN;
-    }
-    break;
-  case '!':
-    if ((c = next()) == '=') {
-      t->token = T_NE;
-    } else {
-      fatalc("Unrecognised character", c);
-    }
-    break;
-  case '<':
-    if ((c = next()) == '=') {
-      t->token = T_LE;
-    } else {
-      putback(c);
-      t->token = T_LT;
-    }
-    break;
-  case '>':
-    if ((c = next()) == '=') {
-      t->token = T_GE;
-    } else {
-      putback(c);
-      t->token = T_GT;
-    }
-    break;
-  default:
-
-    // If it's a digit, scan the
-    // literal integer value in
-    if (isdigit(c)) {
-      t->intvalue = scanint(c);
-      t->token = T_INTLIT;
+    case EOF:
+      t->token = T_EOF;
+      return (0);
+    case '+':
+      t->token = T_PLUS;
       break;
-    } else if (isalpha(c) || '_' == c) {
-      // Read in a keyword or identifier
-      scanident(c, Text, TEXTLEN);
+    case '-':
+      t->token = T_MINUS;
+      break;
+    case '*':
+      t->token = T_STAR;
+      break;
+    case '/':
+      t->token = T_SLASH;
+      break;
+    case ';':
+      t->token = T_SEMI;
+      break;
+    case '{':
+      t->token = T_LBRACE;
+      break;
+    case '}':
+      t->token = T_RBRACE;
+      break;
+    case '(':
+      t->token = T_LPAREN;
+      break;
+    case ')':
+      t->token = T_RPAREN;
+      break;
+    case '=':
+      if ((c = next()) == '=') {
+	t->token = T_EQ;
+      } else {
+	putback(c);
+	t->token = T_ASSIGN;
+      }
+      break;
+    case '!':
+      if ((c = next()) == '=') {
+	t->token = T_NE;
+      } else {
+	fatalc("Unrecognised character", c);
+      }
+      break;
+    case '<':
+      if ((c = next()) == '=') {
+	t->token = T_LE;
+      } else {
+	putback(c);
+	t->token = T_LT;
+      }
+      break;
+    case '>':
+      if ((c = next()) == '=') {
+	t->token = T_GE;
+      } else {
+	putback(c);
+	t->token = T_GT;
+      }
+      break;
+    default:
 
-      // If it's a recognised keyword, return that token
-      if (tokentype = keyword(Text)) {
-	t->token = tokentype;
+      // If it's a digit, scan the
+      // literal integer value in
+      if (isdigit(c)) {
+	t->intvalue = scanint(c);
+	t->token = T_INTLIT;
+	break;
+      } else if (isalpha(c) || '_' == c) {
+	// Read in a keyword or identifier
+	scanident(c, Text, TEXTLEN);
+
+	// If it's a recognised keyword, return that token
+	if (tokentype = keyword(Text)) {
+	  t->token = tokentype;
+	  break;
+	}
+	// Not a recognised keyword, so it must be an identifier
+	t->token = T_IDENT;
 	break;
       }
-      // Not a recognised keyword, so it must be an identifier
-      t->token = T_IDENT;
-      break;
-    }
-    // The character isn't part of any recognised token, error
-    fatalc("Unrecognised character", c);
+      // The character isn't part of any recognised token, error
+      fatalc("Unrecognised character", c);
   }
 
   // We found a token
