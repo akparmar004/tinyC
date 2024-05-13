@@ -154,7 +154,7 @@ int cgcompare_and_set(int ASTop, int r1, int r2) {
 
   fprintf(Outfile, "\tcmp\t%s, %s\n", reglist[r1], reglist[r2]);
   fprintf(Outfile, "\t%s\t%s\n", cmplist[ASTop - A_EQ], breglist[r2]);
-  fprintf(Outfile, "\tmovzb\t%s, %s\n", reglist[r2], breglist[r2]);
+  fprintf(Outfile, "\tmovzx\t%s, %s\n", reglist[r2], breglist[r2]);
   free_register(r1);
   return (r2);
 }

@@ -6,6 +6,8 @@
 // Copyright (c) 2019 Warren Toomey, GPL3
 
 
+// declaration: 'int' identifier ';'  ;
+//
 // Parse the declaration of a variable
 void var_declaration(void) {
 
