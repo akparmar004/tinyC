@@ -7,9 +7,6 @@ comp1: $(SRCS)
 compn: $(SRCN)
 	cc -o compn -g $(SRCN)
 
-clean:
-	rm -f comp1 compn *.o *.s out
-
 test: comp1 tests/runtests
 	(cd tests; chmod +x runtests; ./runtests)
 
