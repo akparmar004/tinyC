@@ -24,7 +24,7 @@ static void usage(char *prog)
 //main program - check for arguments and print a usage if we don't have an argument. 
 //open up the input file start scanning with first initial scan() func. call..
 void main(int argc, char *argv[]) {
-  	struct ASTnode *tree;
+  	ast *tree;
 
   	if(argc != 2)
     		usage(argv[0]);
@@ -51,7 +51,7 @@ void main(int argc, char *argv[]) {
   	tree = compound_statement();	//parse the compound statement in the input
   	genAST(tree, NOREG, 0);		//generate the assembly code for it
   	genpostamble();		 	//output the postamble
-					
+		
   	fclose(Outfile);		//close the output file and exit
   	exit(0);
 }

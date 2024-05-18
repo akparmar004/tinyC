@@ -81,7 +81,7 @@ static int genWHILE(struct ASTnode *n)
 //given an AST, the register (if any) that holds the previous rvalue, and the AST op of the parent,
 //generate assembly code recursively.
 //return the register id with the tree's final value
-int genAST(struct ASTnode *n, int reg, int parentASTop) 
+int genAST(ast *n, int reg, int parentASTop) 
 {
   	int leftreg, rightreg;
 

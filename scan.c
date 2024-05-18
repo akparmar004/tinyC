@@ -21,7 +21,7 @@ static int next(void)
   	if(Putback) 
 	{		
 		//use the character put back if there is one
-    		c = Putback
+    		c = Putback;
     		Putback = 0;
     		return c;
   	}
