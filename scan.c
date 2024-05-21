@@ -104,7 +104,11 @@ static int keyword(char *s)
       			if(!strcmp(s, "else"))
 				return (T_ELSE);
       			break;
-    		case 'i':
+		case 'f':
+			if(!strcmp(s,"for"))
+				return T_FOR;
+			break;
+		case 'i':
       			if(!strcmp(s, "if"))
 				return (T_IF);
       			if(!strcmp(s, "int"))
@@ -118,8 +122,12 @@ static int keyword(char *s)
       			if(!strcmp(s, "while"))
 				return (T_WHILE);
       			break;
-  	}
-  	return (0);
+  		case 'v':
+			if(!strcmp(s, "void"))
+				return T_VOID;
+			break;
+	}
+  	return 0;
 }
 
 //scan and return the next token found in the input, return 1 if token valid, 0 if no tokens left.

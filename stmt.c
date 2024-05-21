@@ -3,6 +3,7 @@
 #include "decl.h"     
 
 //parsing of statements
+static ast *single_statement(void);
 
 static ast *print_statement(void) 
 {
@@ -18,9 +19,8 @@ static ast *print_statement(void)
   	//make an print AST tree
   	tree = mkastunary(A_PRINT, tree, 0);
 
-  	//match the following semicolon and return the AST
-  	semi();
-  	return tree;
+  	//return the tree.. (AST)
+	return tree;
 }
 
 //assignment_statement: identifier '=' expression ';' ;
@@ -49,8 +49,7 @@ static ast *assignment_statement(void)
   	//make an assignment AST tree
   	tree = mkastnode(A_ASSIGN, left, NULL, right, 0);
 
-  	//match the following semicolon and return the AST
-  	semi();
+	//return the tree..
   	return tree;
 }
 
@@ -63,9 +62,9 @@ static ast *assignment_statement(void)
 // Parse an IF statement including
 // any optional ELSE clause
 // and return its AST
-struct ASTnode *if_statement(void) 
+ast *if_statement(void) 
 {
-  	struct ASTnode *condAST, *trueAST, *falseAST = NULL;
+  	ast *condAST, *trueAST, *falseAST = NULL;
 
   	//we need first'if' and '('
   	match(T_IF, "if");
@@ -93,8 +92,7 @@ struct ASTnode *if_statement(void)
 
 // while_statement: 'while' '(' true_false_expression ')' compound_statement  ;
 //
-// Parse a WHILE statement
-// and return its AST
+//parse a WHILE statement and return its AST
 ast *while_statement(void) 
 {
   	ast *condAST, *bodyAST;
@@ -117,6 +115,65 @@ ast *while_statement(void)
 	return mkastnode(A_WHILE, condAST, NULL, bodyAST, 0);
 }
 
+static ast *for_statement(void)
+{
+	ast *condAST, *bodyAST;
+	ast *preopAST, *postopAST;
+	ast *tree;
+
+	//check that we have for '('
+	match(T_FOR, "for");
+	lparen();
+
+	//get the preop statement and ;
+	preopAST = single_statement();
+
+	semi();
+
+	//get the condition and ;
+	condAST = binexpr(0);
+	if(condAST -> op < A_EQ || condAST -> op > A_GE)
+		fatal("Bad comparison operator");
+	
+	semi();
+
+	postopAST = single_statement();
+	rparen();
+
+	//get the body of for loop in bodyAST..
+	bodyAST = compound_statement();
+
+	tree = mkastnode(A_GLUE, bodyAST, NULL, postopAST, 0); //glue comp_Stmt with postop tree.
+	
+	//make while loopp with condition with this new block of code..
+	tree = mkastnode(A_WHILE, condAST, NULL, tree, 0);
+
+	return mkastnode(A_GLUE, preopAST, NULL, tree, 0); //glue preop tree with A_WHILE treee
+}
+
+//parse single_stmt and return tree(AST) of it..
+
+ast *single_statement(void)
+{
+	switch(Token.token)
+	{
+		case T_PRINT:
+			return print_statement();
+		case T_INT:
+			var_declaration();
+			return NULL;
+		case T_IDENT:
+			return assignment_statement();
+		case T_IF:
+			return if_statement();
+		case T_WHILE:
+			return while_statement();
+		case T_FOR:
+			return for_statement();
+		default :
+			fatald("Syntax error, token", Token.token);
+	}
+}
 
 //parse a compound statement and return its AST Tree node..
 ast *compound_statement(void) 
@@ -129,34 +186,15 @@ ast *compound_statement(void)
 
   	while(1)
   	{
-    		switch(Token.token) 
-		{
-      			case T_PRINT:
-				tree = print_statement();
-				break;
-      			case T_INT:
-				var_declaration();
-				tree = NULL;		//no AST generated here
-				break;
-      			case T_IDENT:
-				tree = assignment_statement();
-				break;
-      			case T_IF:
-				tree = if_statement();
-				break;
-      			case T_WHILE:
-				tree = while_statement();
-				break;
-      			case T_RBRACE:
-				//when we hit a right curly bracket, skip past it and return the ast
-				rbrace();
-				return (left);
-		        default:
-				fatald("Syntax error, token", Token.token);
-    		}
+		
+		tree = single_statement(); //parse sing_stmt;
+		
+		if(tree != NULL && (tree -> op == A_PRINT || tree -> op == A_ASSIGN))
+			semi();
 
     		//for every new tree, either save it in left, if left is empty, or glue the left tree
 		//with the new tree.. 
+
 	    	if(tree)
     		{
       			if(left == NULL)
@@ -164,5 +202,12 @@ ast *compound_statement(void)
       			else
 				left = mkastnode(A_GLUE, left, NULL, tree, 0);
     		}
+
+		//if we hit right curly then just return the AST..
+		if(Token.token == T_RBRACE)
+		{
+			rbrace();
+			return left;
+		}
   	}
 }

@@ -1,18 +1,15 @@
 
-// Function prototypes for all compiler files
-// Copyright (c) 2019 Warren Toomey, GPL3
-// scan.c
+//function prototypes for all compiler files
+//scan.c
 int scan(struct token *t);
 
 // tree.c
-struct ASTnode *mkastnode(int op, struct ASTnode *left,
-			  struct ASTnode *mid,
-			  struct ASTnode *right, int intvalue);
-struct ASTnode *mkastleaf(int op, int intvalue);
-struct ASTnode *mkastunary(int op, struct ASTnode *left, int intvalue);
+ast *mkastnode(int op, ast *left, ast *mid, ast *right, int intvalue);
+ast *mkastleaf(int op, int intvalue);
+ast *mkastunary(int op, ast *left, int intvalue);
 
 // gen.c
-int genAST(struct ASTnode *n, int reg, int parentASTop);
+int genAST(ast *n, int reg, int parentASTop);
 void genpreamble();
 void genpostamble();
 void genfreeregs();
@@ -22,7 +19,8 @@ void genglobsym(char *s);
 // cg.c
 void freeall_registers(void);
 void cgpreamble();
-void cgpostamble();
+void cgfuncpreamble(char *name);
+void cgfuncpostamble();
 int cgloadint(int value);
 int cgloadglob(char *identifier);
 int cgadd(int r1, int r2);
@@ -38,10 +36,10 @@ void cglabel(int l);
 void cgjump(int l);
 
 // expr.c
-struct ASTnode *binexpr(int ptp);
+ast *binexpr(int ptp);
 
 // stmt.c
-struct ASTnode *compound_statement(void);
+ast *compound_statement(void);
 
 // misc.c
 void match(int t, char *what);
@@ -62,3 +60,4 @@ int addglob(char *name);
 
 // decl.c
 void var_declaration(void);
+ast *function_declaration(void);

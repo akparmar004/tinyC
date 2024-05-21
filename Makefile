@@ -10,16 +10,16 @@ compn: $(SRCN)
 test: comp1 tests/runtests
 	(cd tests; chmod +x runtests; ./runtests)
 
-test6: comp1 tests/input06
-	./comp1 tests/input06
+test8: comp1 tests/input08
+	./comp1 tests/input08
 	cc -o out out.s
 	./out
 
 testn: compn tests/runtestsn
 	(cd tests; chmod +x runtestsn; ./runtestsn)
 
-test6n: compn tests/input06
-	./compn tests/input06
+test8n: compn tests/input08
+	./compn tests/input08
 	nasm -f elf64 out.s
 	cc -no-pie -o out out.o
 	./out

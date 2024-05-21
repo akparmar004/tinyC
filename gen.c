@@ -54,7 +54,7 @@ static int genIF(struct ASTnode *n)
 }
 
 //generate the code for a WHILE statement and an optional ELSE clause
-static int genWHILE(struct ASTnode *n) 
+static int genWHILE(ast *n) 
 {
   	int Lstart, Lend;
 
@@ -99,6 +99,12 @@ int genAST(ast *n, int reg, int parentASTop)
       			genAST(n->right, NOREG, n->op);
       			genfreeregs();
       			return (NOREG);
+		case A_FUNCTION:
+			//gen function's preamble before the code..
+			cgfuncpreamble(Gsym[n->v.id].name);
+			genAST(n->left, NOREG, n->op);
+			cgfuncpostamble();
+			return NOREG;
   	}
 
   	//general AST node handling below
@@ -122,7 +128,7 @@ int genAST(ast *n, int reg, int parentASTop)
     		case A_EQ:
     		case A_NE:
     		case A_LT:
-    		case A_GT:
+    		case A_GT:	
     		case A_LE:
     		case A_GE:
       			//if the parent AST node is an A_IF or A_WHILE, generate
@@ -155,10 +161,7 @@ void genpreamble()
 {
   	cgpreamble();
 }
-void genpostamble() 
-{
- 	cgpostamble();
-}
+
 void genfreeregs() 
 {
   	freeall_registers();

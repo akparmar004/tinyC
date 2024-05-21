@@ -11,35 +11,40 @@ static int freereg[4];
 static char *reglist[4]  = { "r8",  "r9",  "r10",  "r11" };
 static char *breglist[4] = { "r8b", "r9b", "r10b", "r11b" };
 
-// Set all registers as available
-void freeall_registers(void) {
-  freereg[0] = freereg[1] = freereg[2] = freereg[3] = 1;
+//set all registers as available
+void freeall_registers(void) 
+{
+  	freereg[0] = freereg[1] = freereg[2] = freereg[3] = 1;
 }
 
-// Allocate a free register. Return the number of
-// the register. Die if no available registers.
-static int alloc_register(void) {
-  for (int i = 0; i < 4; i++) {
-    if (freereg[i]) {
-      freereg[i] = 0;
-      return (i);
-    }
-  }
-  fatal("Out of registers");
+//allocate a free register, return the number of the register, die if no available registers.
+static int alloc_register(void) 
+{
+  	for (int i = 0; i < 4; i++) 
+	{
+    		if(freereg[i]) 
+		{
+      			freereg[i] = 0;
+		        return (i);
+    		}
+  	}
+  	fatal("Out of registers");
 }
 
-// Return a register to the list of available registers.
-// Check to see if it's not already there.
-static void free_register(int reg) {
+//return a register to the list of available registers, check to see if it's not already there.
+static void free_register(int reg) 
+{
   if (freereg[reg] != 0)
     fatald("Error trying to free register", reg);
   freereg[reg] = 1;
 }
 
-// Print out the assembly preamble
-void cgpreamble() {
-  freeall_registers();
-  fputs("\tglobal\tmain\n"
+
+//print out the assembly preamble
+void cgpreamble() 
+{
+  	freeall_registers();
+  	fputs("\tglobal\tmain\n"
 	"\textern\tprintf\n"
 	"\tsection\t.text\n"
 	"LC0:\tdb\t\"%d\",10,0\n"
@@ -60,9 +65,19 @@ void cgpreamble() {
 	"main:\n" "\tpush\trbp\n" "\tmov	rbp, rsp\n", Outfile);
 }
 
-// Print out the assembly postamble
-void cgpostamble() {
-  fputs("\tmov	eax, 0\n" "\tpop	rbp\n" "\tret\n", Outfile);
+//print out a function preamble
+void cgfuncpreamble(char *name) 
+{
+  	fprintf(Outfile,
+	  "\tsection\t.text\n"
+	  "\tglobal\t%s\n"
+	  "%s:\n" "\tpush\trbp\n"
+	  "\tmov\trbp, rsp\n", name, name);
+}
+
+void cgfuncpostamble(char *name)
+{
+	fprintf("\tmov eax, 0\n" "\tpop rbp\n" "\tret\n", Outfile);
 }
 
 // Load an integer literal value into a register.

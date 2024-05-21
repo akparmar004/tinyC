@@ -47,10 +47,14 @@ void main(int argc, char *argv[]) {
 
   	scan(&Token);			//get the first token from the input file
 				
-  	genpreamble();		 	//output the preamble, initial code for assembly..
-  	tree = compound_statement();	//parse the compound statement in the input
-  	genAST(tree, NOREG, 0);		//generate the assembly code for it
-  	genpostamble();		 	//output the postamble
+  	genpreamble();			//output the preamble, initial code for assembly..
+	while(1)
+	{
+		tree = function_declaration();
+		genAST(tree, NOREG, 0);
+		if(Token.token == T_EOF)
+			break;	
+	}
 		
   	fclose(Outfile);		//close the output file and exit
   	exit(0);

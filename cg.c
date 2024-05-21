@@ -41,31 +41,34 @@ static void free_register(int reg)
 //print out the assembly preamble
 void cgpreamble() 
 {
-  	freeall_registers();
-  	fputs("\t.text\n"
-		".LC0:\n"
-		"\t.string\t\"%d\\n\"\n"
-		"printint:\n"
-		"\tpushq\t%rbp\n"
-		"\tmovq\t%rsp, %rbp\n"
-		"\tsubq\t$16, %rsp\n"
-		"\tmovl\t%edi, -4(%rbp)\n"
-		"\tmovl\t-4(%rbp), %eax\n"
-		"\tmovl\t%eax, %esi\n"
-		"\tleaq	.LC0(%rip), %rdi\n"
-		"\tmovl	$0, %eax\n"
-		"\tcall	printf@PLT\n"
-		"\tnop\n"
-		"\tleave\n"
-		"\tret\n"
-		"\n"
-		"\t.globl\tmain\n"
-		"\t.type\tmain, @function\n"
-		"main:\n" "\tpushq\t%rbp\n" "\tmovq	%rsp, %rbp\n", Outfile);
+	freeall_registers();
+	fputs("\t.text\n"
+	".LC0:\n"
+	"\t.string\t\"%d\\n\"\n"
+	"printint:\n"
+	"\tpushq\t%rbp\n"
+	"\tmovq\t%rsp, %rbp\n"
+	"\tsubq\t$16, %rsp\n"
+	"\tmovl\t%edi, -4(%rbp)\n"
+	"\tmovl\t-4(%rbp), %eax\n"
+	"\tmovl\t%eax, %esi\n"
+	"\tleaq	.LC0(%rip), %rdi\n"
+	"\tmovl	$0, %eax\n"
+	"\tcall	printf@PLT\n" "\tnop\n" "\tleave\n" "\tret\n" "\n", Outfile);
+}
+//print out a function preamble
+void cgfuncpreamble(char *name) 
+{
+  	fprintf(Outfile,
+		"\t.text\n"
+		"\t.globl\t%s\n"
+	  	"\t.type\t%s, @function\n"
+		"%s:\n" "\tpushq\t%%rbp\n"
+		"\tmovq\t%%rsp, %%rbp\n", name, name, name);
 }
 
-//print the assembly postamble
-void cgpostamble() 
+//print the function postamble
+void cgfuncpostamble() 
 {
   	fputs("\tmovl	$0, %eax\n" "\tpopq	%rbp\n" "\tret\n", Outfile);
 }
@@ -155,7 +158,7 @@ static char *cmplist[] = { "sete", "setne", "setl", "setg", "setle", "setge" };
 int cgcompare_and_set(int ASTop, int r1, int r2) 
 {
 
-  	// Check the range of the AST operation
+  	// Check the	 range of the AST operation
   	if(ASTop < A_EQ || ASTop > A_GE)
     		fatal("Bad ASTop in cgcompare_and_set()");
 

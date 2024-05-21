@@ -19,7 +19,8 @@ enum
   	T_LBRACE, T_RBRACE, T_LPAREN, T_RPAREN,
  	
 	//tokens for keywords
-  	T_PRINT, T_INT, T_IF, T_ELSE, T_WHILE
+  	T_PRINT, T_INT, T_IF, T_ELSE, T_WHILE,
+	T_FOR, T_VOID
 };
 
 struct token
@@ -36,7 +37,7 @@ enum
   	A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE,
   	A_INTLIT,
   	A_IDENT, A_LVIDENT, A_ASSIGN, A_PRINT, A_GLUE,
-  	A_IF, A_WHILE
+  	A_IF, A_WHILE, A_FUNCTION
 };
 
 //Abstract Syntax Tree(AST) structure
