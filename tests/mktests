@@ -1,16 +1,11 @@
 #!/bin/sh
 # Make the output files for each test
 
-if [ ! -f ../comp1 ]
-then echo "Need to build ../comp1 first!"; exit 1
-fi
-
-for i in input*
+for i in input*c
 do if [ ! -f "out.$i" ]
    then
-     ../comp1 $i
-     cc -o out out.s
+     cc -o out $i ../lib/printint.c
      ./out > out.$i
-     rm -f out out.s
+     rm -f out
    fi
 done

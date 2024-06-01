@@ -2,12 +2,14 @@
 #include "data.h"
 #include "decl.h"
 
-//miscellaneous functions
+// Miscellaneous functions
 
-//check that the current token is t, and fetch next token. else throw an error 
-void match(int tok, char *what) 
+// Ensure that the current token is t,
+// and fetch the next token. Otherwise
+// throw an error 
+void match(int t, char *what) 
 {
-  	if(Token.token == tok) 
+  	if(Token.token == t) 
 	{
     		scan(&Token);
   	}
@@ -17,43 +19,43 @@ void match(int tok, char *what)
   	}
 }
 
-//check a semicolon and fetch next token
+// Match a semicolon and fetch the next token
 void semi(void) 
 {
   	match(T_SEMI, ";");
 }
 
-//check right brackate and fetch next token
-void rbrace(void) 
-{
-  	match(T_RBRACE, "}");
-}
-
-//check left brackate and fetch next token
+// Match a left brace and fetch the next token
 void lbrace(void) 
 {
   	match(T_LBRACE, "{");
 }
 
-//check left parenthesis and fetch next token
+// Match a right brace and fetch the next token
+void rbrace(void) 
+{
+  	match(T_RBRACE, "}");
+}
+
+// Match a left parenthesis and fetch the next token
 void lparen(void) 
 {
   	match(T_LPAREN, "(");
 }
 
-//match  right parenthesis and fetch the next token
+// Match a right parenthesis and fetch the next token
 void rparen(void) 
 {
   	match(T_RPAREN, ")");
 }
 
-//match identifier and fetch next token
+// Match an identifier and fetch the next token
 void ident(void) 
 {
   	match(T_IDENT, "identifier");
 }
 
-//print fatal messages
+// Print out fatal messages
 void fatal(char *s) 
 {
   	fprintf(stderr, "%s on line %d\n", s, Line);

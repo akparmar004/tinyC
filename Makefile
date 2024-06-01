@@ -1,25 +1,26 @@
-SRCS= cg.c decl.c expr.c gen.c main.c misc.c scan.c stmt.c sym.c tree.c
-SRCN= cgn.c decl.c expr.c gen.c main.c misc.c scan.c stmt.c sym.c tree.c
+files = cg.c decl.c expr.c gen.c main.c misc.c scan.c stmt.c sym.c tree.c types.c
 
-comp1: $(SRCS)
-	cc -o comp1 -g $(SRCS)
+filesn = cgn.c decl.c expr.c gen.c main.c misc.c scan.c stmt.c sym.c tree.c types.c
 
-compn: $(SRCN)
-	cc -o compn -g $(SRCN)
+jarvis: $(files)
+	cc -o jarvis -g -Wall $(files)
 
-test: comp1 tests/runtests
+jarvisn: $(filesn)
+	cc -o jarvisn -g -Wall $(filesn)
+
+test: jarvis tests/runtests
 	(cd tests; chmod +x runtests; ./runtests)
 
-test8: comp1 tests/input08
-	./comp1 tests/input08
-	cc -o out out.s
-	./out
-
-testn: compn tests/runtestsn
+testn: jarvisn tests/runtestsn
 	(cd tests; chmod +x runtestsn; ./runtestsn)
 
-test8n: compn tests/input08
-	./compn tests/input08
+test20: jarvis tests/input20.c lib/printint.c
+	./jarvis tests/input20.c
+	cc -o out out.s lib/printint.c
+	./out
+
+test20n: jarvisn tests/input20.c lib/printint.c
+	./jarvisn tests/input20.c
 	nasm -f elf64 out.s
-	cc -no-pie -o out out.o
+	cc -no-pie -o out lib/printint.c out.o
 	./out
