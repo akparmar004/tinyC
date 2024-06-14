@@ -2,10 +2,9 @@
 #include "data.h"
 #include "decl.h"
 
-// Lexical scanning
+//lexical scanner
 
-// Return the position of character c
-// in string s, or -1 if c not found
+//return position of char c in string s or -1 if c not available..
 static int chrpos(char *s, int c) 
 {
   	char *p;
@@ -14,34 +13,32 @@ static int chrpos(char *s, int c)
   	return (p ? p - s : -1);
 }
 
-// Get the next character from the input file.
+//get the next char from the input file... with fgetc..
 static int next(void)
 {
   	int c;
 
   	if(Putback)
-       	{		// Use the character put
-    		c = Putback;		// back if there is one
+       	{				
+    		c = Putback;		//use putback if needed
     		Putback = 0;
     		return c;
   	}
 
-  	c = fgetc(Infile);		// Read from input file
+  	c = fgetc(Infile);		//read char from input file
   	if('\n' == c)
-    		Line++;			// Increment line count
+    		Line++;			//if it's "\n" then increment line count
   	
 	return c;
 }
 
-// Put back an unwanted character
+//put back an unwanted character
 static void putback(int c) 
 {
   	Putback = c;
 }
 
-// Skip past input that we don't need to deal with, 
-// i.e. whitespace, newlines. Return the first
-// character we do need to deal with.
+//skip chars like i.e. whitespace, newlines,  and return the first character we do need to deal with...
 static int skip(void) 
 {
   	int c;
@@ -54,35 +51,87 @@ static int skip(void)
   	return c;
 }
 
-// Scan and return an integer literal
-// value from the input file.
+static int scanch(void)
+{
+	int c;
+
+	c = next();
+	if(c == '\\')
+	{
+		switch(c = next())
+		{
+			case 'a':
+				return '\a';
+			case 'b':
+				return '\b';
+			case 'f':
+				return '\f';
+			case 'n':
+				return '\n';
+			case 'r':
+				return '\r';
+			case 't':
+				return '\t';
+			case 'v':
+				return '\v';
+			case '\\':
+				return '\\';
+			case '"':
+				return '"';
+			case '\'':
+				return '\'';
+			default :
+				fatalc("unknown escape sequence", c);
+		}
+	}
+	return c;
+}
+
+
+//scan and return an int lit value 
 static int scanint(int c) 
 {
   	int k, val = 0;
 
-  	// Convert each character into an int value
+  	//convert each character into an int value using our chrpos func..
   	while((k = chrpos("0123456789", c)) >= 0) 
   	{
     		val = val * 10 + k;
     		c = next();
   	}
 
-  // We hit a non-integer character, put it back.
+  	//we hit a non-int char, put it back at its place..
   	putback(c);
   	return val;
 }
 
-// Scan an identifier from the input file and
-// store it in buf[]. Return the identifier's length
+
+static int scanstr(char *buf)
+{
+	int i, c;
+
+	for(i = 0; i < TEXTLEN-1; i++)
+	{
+		if((c = scanch()) == '"')
+		{
+			buf[i] = 0;
+			return i;
+		}
+
+		buf[i] = c;
+	}
+	fatal("string literal too long");
+	return 0;
+}
+
+//scan ident and store it in buf[].. and return length of ident..
 static int scanident(int c, char *buf, int lim) 
 {
   	int i = 0;
 
-  	// Allow digits, alpha and underscores
+  	//only allow digits, alpha and underscores
   	while(isalpha(c) || isdigit(c) || '_' == c) 
 	{
-    		// Error if we hit the identifier length limit,
-    		// else append to buf[] and get next character
     		if(lim - 1 == i) 
 		{
       			fatal("Identifier too long");
@@ -94,17 +143,13 @@ static int scanident(int c, char *buf, int lim)
     		c = next();
   	}
   	
-	// We hit a non-valid character, put it back.
-  	// NUL-terminate the buf[] and return the length
+	//we hit a non-valid char, put it back, and terminate the buf[] with '\0'
   	putback(c);
   	buf[i] = '\0';
   	return i;
 }
 
-// Given a word from the input, return the matching
-// keyword token number or 0 if it's not a keyword.
-// Switch on the first letter so that we don't have
-// to waste time strcmp()ing against all the keywords.
+//match a keyword.. if  not matching erturn 0 else ret token..
 static int keyword(char *s) 
 {
   	switch(*s) 
@@ -147,10 +192,10 @@ static int keyword(char *s)
   	return 0;
 }
 
-// A pointer to a rejected token
+//a pointer to a rejected token
 static struct token *Rejtoken = NULL;
 
-// Reject the token that we just scanned
+//reject token that we just scanned
 void reject_token(struct token *t) 
 {
   	if(Rejtoken != NULL)
@@ -159,13 +204,12 @@ void reject_token(struct token *t)
 	Rejtoken = t;
 }
 
-// Scan and return the next token found in the input.
-// Return 1 if token valid, 0 if no tokens left.
+//scan and return token ..
 int scan(struct token *t) 
 {
   	int c, tokentype;
 
-  	// If we have any rejected token, return it
+  	//if we have any rejected token, return it
   	if(Rejtoken != NULL) 
 	{
     		t = Rejtoken;
@@ -173,20 +217,36 @@ int scan(struct token *t)
     		return 1;
   	}
   	
-	// Skip whitespace
+	//skip whitespace
   	c = skip();
 
-  	// Determine the token based on the input character
+  	//determine the token based on the input character
   	switch(c) 
   	{
     		case EOF:
       			t->token = T_EOF;
       			return 0;
     		case '+':
-      			t->token = T_PLUS;
+      			if((c = next()) == '+') 
+      			{
+				t -> token = T_INC;
+      			}
+      			else 
+      			{
+				putback(c);
+				t -> token = T_PLUS;
+      			}
       			break;
     		case '-':
-      			t -> token = T_MINUS;
+      			if((c = next()) == '-') 
+      			{
+				t -> token = T_DEC;
+      			} 
+      			else 
+      			{
+				putback(c);
+				t -> token = T_MINUS;
+      			}
       			break;
     		case '*':
       			t->token = T_STAR;
@@ -215,6 +275,15 @@ int scan(struct token *t)
     		case ']':
       			t->token = T_RBRACKET;
       			break;
+      		case '~':
+      			t -> token = T_INVERT;
+      			break;
+    		case '^':
+      			t -> token = T_XOR;
+      			break;
+    		case ',':
+      			t -> token = T_COMMA;
+      			break;
     		case '=':
       			if((c = next()) == '=') 
       			{
@@ -233,14 +302,19 @@ int scan(struct token *t)
       			}
       			else 
       			{
-				fatalc("Unrecognised character", c);
+				putback(c);
+				t -> token = T_LOGNOT;
       			}
       			break;
     		case '<':
       			if((c = next()) == '=') 
       			{
 				t->token = T_LE;
-      			} 
+      			}
+      			else if(c == '<') 
+      			{
+				t->token = T_LSHIFT;
+      			}  
       			else
       			{
 				putback(c);
@@ -251,6 +325,10 @@ int scan(struct token *t)
       			if((c = next()) == '=') 
       			{
 				t->token = T_GE;
+      			} 
+      			else if(c == '>') 
+      			{
+				t->token = T_RSHIFT;
       			} 
       			else 
       			{
@@ -269,9 +347,29 @@ int scan(struct token *t)
 				t->token = T_AMPER;
       			}
       			break;
+      		case '|':
+      			if((c = next()) == '|') 
+      			{
+				t->token = T_LOGOR;
+      			} 
+      			else 
+      			{
+				putback(c);
+				t->token = T_OR;
+      			}
+      			break;
+		case '\'':
+			t -> intvalue = scanch();
+			t -> token = T_INTLIT;
+			if(next() != '\'')
+				fatal("Expected '\\'' at end of char literal");
+			break;
+		case '"':
+			scanstr(Text);
+			t->token = T_STRLIT;
+			break;
     		default:
-      			// If it's a digit, scan the
-      			// literal integer value in
+      			//if it's a digit, scan int lit value in
       			if(isdigit(c)) 
       			{
 				t->intvalue = scanint(c);
@@ -280,22 +378,23 @@ int scan(struct token *t)
       			} 
       			else if (isalpha(c) || '_' == c) 
       			{
-				// Read in a keyword or identifier
+				//read that word or ident
 				scanident(c, Text, TEXTLEN);
 
-				// If it's a recognised keyword, return that token
+				//if it's a recognised keyword, then ret..
 				if((tokentype = keyword(Text)) != 0) 
 				{
 	  				t->token = tokentype;
 	  				break;
 				}
-				// Not a recognised keyword, so it must be an identifier
+				//not a recognised keyword, so it must be an identifier
 				t->token = T_IDENT;
 				break;
       			}
-      			// The character isn't part of any recognised token, error
+      			//the character isn't part of any recognised token, error
       			fatalc("Unrecognised character", c);
   		}	
+
   	//return with success
   	return (1);
 }

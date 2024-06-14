@@ -71,10 +71,42 @@ static int genWHILE(ast *n)
   	//finally output the jump back to the condition, and the end label
   	cgjump(Lstart);
   	cglabel(Lend);
-  	return NOREG;
+  	
+	return NOREG;
 }
 
-//given an AST, an optional label, and the AST op of the parent, generate assembly code recursively.
+// Generate the code to copy the arguments of a
+// function call to its parameters, then call the
+// function itself. Return the register that holds 
+// the function's return value.
+static int gen_funccall(ast *n) {
+  	ast *gluetree = n -> left;
+  	int reg;
+  	int numargs = 0;
+
+  	// If there is a list of arguments, walk this list
+  	// from the last argument (right-hand child) to the first
+  	while(gluetree) 
+  	{
+    		// Calculate the expression's value
+    		reg = genAST(gluetree -> right, NOLABEL, gluetree -> op);
+    		
+    		// Copy this into the n'th function parameter: size is 1, 2, 3, ...
+    		cgcopyarg(reg, gluetree -> size);
+    		
+    		// Keep the first (highest) number of arguments
+    		if(numargs == 0)
+      			numargs = gluetree -> size;
+    		
+    		genfreeregs();
+    		gluetree = gluetree -> left;
+  	}
+
+  	// Call the function, clean up the stack (based on numargs), and return its result
+  	return cgcall(n -> sym, numargs);
+}
+
+//given an AST, an optional label and the AST op of the parent, generate assembly code recursively.
 //return the register id with the tree's final value.
 int genAST(ast *n, int label, int parentASTop) 
 {
@@ -88,30 +120,34 @@ int genAST(ast *n, int label, int parentASTop)
       			return genIF(n);
     		case A_WHILE:
       			return genWHILE(n);
+      		case A_FUNCCALL:
+      			return gen_funccall(n);
     		case A_GLUE:
       			//do each child statement, and free the registers after each child
-      			genAST(n->left, NOLABEL, n->op);
+      			genAST(n -> left, NOLABEL, n -> op);
       			genfreeregs();
-      			genAST(n->right, NOLABEL, n->op);
+      			genAST(n -> right, NOLABEL, n -> op);
       			genfreeregs();
+      			
       			return NOREG;
     		case A_FUNCTION:
       			//generate the function's preamble before the code in the child sub-tree
-      			cgfuncpreamble(n->v.id);
-      			genAST(n->left, NOLABEL, n->op);
-      			cgfuncpostamble(n->v.id);
+      			cgfuncpreamble(n -> sym);
+      			genAST(n -> left, NOLABEL, n->op);
+      			cgfuncpostamble(n -> sym);
+      			
       			return NOREG;
   	}
 
   	//general AST node handling below
 
   	//get the left and right sub-tree values
-  	if(n->left)
-    		leftreg = genAST(n->left, NOLABEL, n->op);
-  	if(n->right)
-    		rightreg = genAST(n->right, NOLABEL, n->op);
+  	if(n -> left)
+    		leftreg = genAST(n -> left, NOLABEL, n -> op);
+  	if(n -> right)
+    		rightreg = genAST(n -> right, NOLABEL, n -> op);
 
-  	switch(n->op) 
+  	switch(n -> op) 
 	{
     		case A_ADD:
       			return cgadd(leftreg, rightreg);
@@ -121,7 +157,16 @@ int genAST(ast *n, int label, int parentASTop)
       			return cgmul(leftreg, rightreg);
     		case A_DIVIDE:
       			return cgdiv(leftreg, rightreg);
-    		
+    		case A_AND:
+      			return cgand(leftreg, rightreg);
+    		case A_OR:
+      			return cgor(leftreg, rightreg);
+    		case A_XOR:
+      			return cgxor(leftreg, rightreg);
+    		case A_LSHIFT:
+      			return cgshl(leftreg, rightreg);
+    		case A_RSHIFT:
+      			return cgshr(leftreg, rightreg);
 		case A_EQ:
     		case A_NE:
     		case A_LT:
@@ -132,59 +177,99 @@ int genAST(ast *n, int label, int parentASTop)
       			//a compare followed by a jump. Otherwise, compare registers
       			//and set one to 1 or 0 based on the comparison.
       			if(parentASTop == A_IF || parentASTop == A_WHILE)
-				return cgcompare_and_jump(n->op, leftreg, rightreg, label);
+				return cgcompare_and_jump(n -> op, leftreg, rightreg, label);
       			else
-				return cgcompare_and_set(n->op, leftreg, rightreg);
+				return cgcompare_and_set(n -> op, leftreg, rightreg);
     		case A_INTLIT:
-      			return cgloadint(n->v.intvalue, n->type);
-    		case A_IDENT:
+      			return cgloadint(n -> intvalue, n->type);
+		case A_STRLIT:
+			return cgloadglobstr(n -> intvalue);
+		case A_IDENT:
       			//load our value if we are an rvalue or we are being dereferenced
-      			if(n->rvalue || parentASTop== A_DEREF)
-        			return cgloadglob(n->v.id);
+      			if(n -> rvalue || parentASTop == A_DEREF)
+      			{
+      				if(n->sym->class == C_GLOBAL) 
+      				{
+	  				return cgloadglob(n -> sym, n -> op);
+				} 
+				else 
+				{
+	  				return cgloadlocal(n -> sym, n -> op);
+				}
+      			}
       			else
         			return NOREG;
     		case A_ASSIGN:
       			//are we assigning to an identifier or through a pointer?
-      			switch(n->right->op) 
+      			switch(n -> right -> op) 
 			{
-        			case A_IDENT: 
-					return cgstorglob(leftreg, n->right->v.id);
+        			case A_IDENT:
+	  				if(n -> right -> sym -> class == C_GLOBAL)
+	    					return cgstorglob(leftreg, n -> right -> sym);
+	  				else
+	    					return cgstorlocal(leftreg, n -> right -> sym);
 				case A_DEREF:
-				       	return cgstorderef(leftreg, rightreg, n->right->type);
-        			default:
-				       	fatald("Can't A_ASSIGN in genAST(), op", n->op);
+	  				return cgstorderef(leftreg, rightreg, n -> right -> type);
+				default:
+	  				fatald("Can't A_ASSIGN in genAST(), op", n -> op);
       			}
     		case A_WIDEN:
       			//widen the child's type to the parent's type
-      			return cgwiden(leftreg, n->left->type, n->type);
+      			return cgwiden(leftreg, n -> left -> type, n -> type);
     		case A_RETURN:
       			cgreturn(leftreg, Functionid);
       			return NOREG;
-    		case A_FUNCCALL:
-      			return cgcall(leftreg, n->v.id);
-    		case A_ADDR:
-      			return cgaddress(n->v.id);
+    		 case A_ADDR:
+      			return cgaddress(n->sym);
     		case A_DEREF:
-      			//if we are an rvalue, dereference to get the value we point at,
-      			//otherwise leave it for A_ASSIGN to store through the pointer
-      			if(n->rvalue)
-        			return cgderef(leftreg, n->left->type);
+      			// If we are an rvalue, dereference to get the value we point at,
+      			// otherwise leave it for A_ASSIGN to store through the pointer
+      			if(n -> rvalue)
+				return cgderef(leftreg, n->left->type);
       			else
-        			return leftreg;
+				return leftreg;
     		case A_SCALE:
-      			//small optimisation: use shift if the
-      			//scale value is a known power of two
-      			switch(n->v.size) 
-			{
-				case 2: return(cgshlconst(leftreg, 1));
-				case 4: return(cgshlconst(leftreg, 2));
-				case 8: return(cgshlconst(leftreg, 3));
+      			// Small optimisation: use shift if the
+      			// scale value is a known power of two
+      			switch(n -> size)
+      			{
+				case 2:
+	  				return cgshlconst(leftreg, 1);
+				case 4:
+	  				return cgshlconst(leftreg, 2);
+				case 8:
+	  				return cgshlconst(leftreg, 3);
 				default:
-	  				//load a register with the size and
-	  				//multiply the leftreg by this size
-          				rightreg= cgloadint(n->v.size, P_INT);
-          				return cgmul(leftreg, rightreg);
+	  				// Load a register with the size and
+	  				// multiply the leftreg by this size
+	  				rightreg = cgloadint(n -> size, P_INT);
+	  				return cgmul(leftreg, rightreg);
       			}
+    		case A_POSTINC:
+    		case A_POSTDEC:
+      			// Load and decrement the variable's value into a register and post increment/decrement it
+      			if(n->sym->class == C_GLOBAL)
+				return cgloadglob(n -> sym, n->op);
+      			else
+				return cgloadlocal(n->sym, n->op);
+    		case A_PREINC:
+    		case A_PREDEC:
+      			// Load and decrement the variable's value into a register and pre increment/decrement it
+      			if(n->left->sym->class == C_GLOBAL)
+				return cgloadglob(n->left->sym, n->op);
+      			else
+				return cgloadlocal(n->left->sym, n->op);
+    		case A_NEGATE:
+      			return cgnegate(leftreg);
+    		case A_INVERT:
+      			return cginvert(leftreg);
+    		case A_LOGNOT:
+      			return cglognot(leftreg);
+    		case A_TOBOOL:
+      			// If the parent AST node is an A_IF or A_WHILE, generate
+      			// a compare followed by a jump. Otherwise, set the register
+      			// to 0 or 1 based on it's zeroeness or non-zeroeness
+      			return cgboolean(leftreg, parentASTop, label);
     		default:
       			fatald("Unknown AST operator", n->op);
   	}
@@ -203,9 +288,15 @@ void genfreeregs()
 {
   	freeall_registers();
 }
-void genglobsym(int id) 
+void genglobsym(symt *node) 
 {
-  	cgglobsym(id);
+  	cgglobsym(node	);
+}
+int genglobstr(char *strvalue)
+{
+	int l = genlabel();
+	cgglobstr(l, strvalue);
+	return l;
 }
 int genprimsize(int type) 
 {

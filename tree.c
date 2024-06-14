@@ -2,52 +2,52 @@
 #include "data.h"
 #include "decl.h"
 
-// AST tree functions
+//ast tree functions
 
-// Build and return a generic AST node
-ast *mkastnode(int op, int type, ast *left, ast *mid, ast *right, int intvalue) 
+//build and return a generic AST node
+ast *mkastnode(int op, int type, ast *left, ast *mid, ast *right, symt *sym, int intvalue) 
 {
   	ast *n;
 
-  	// Malloc a new ASTnode
+  	//allocate space for new ast node
   	n = (ast *) malloc(sizeof(ast));
   	
   	if(n == NULL)
     		fatal("Unable to malloc in mkastnode()");
 
-  	// Copy in the field values and return it
-  	n->op = op;
-  	n->type = type;
-  	n->left = left;
-  	n->mid = mid;
-  	n->right = right;
-  	n->v.intvalue = intvalue;
+  	//copy all the values and return it
+  	n -> op = op;
+  	n -> type = type;
+  	n -> left = left;
+  	n -> mid = mid;
+  	n -> right = right;
+  	n -> sym = sym;
+  	n -> intvalue = intvalue;
+
   	return n;
 }
 
 
-//ake an AST leaf node
-ast *mkastleaf(int op, int type, int intvalue) 
+//make AST leaf node with no childs..
+ast *mkastleaf(int op, int type, symt *sym, int intvalue) 
 {
-  	return (mkastnode(op, type, NULL, NULL, NULL, intvalue));
+  	return (mkastnode(op, type, NULL, NULL, NULL, sym, intvalue));
 }
 
-// Make a unary AST node: only one child
-ast *mkastunary(int op, int type, ast *left, int intvalue) 
+//make unary AST node with only one child
+ast *mkastunary(int op, int type, ast *left, symt *sym, int intvalue) 
 {
-  	return mkastnode(op, type, left, NULL, NULL, intvalue);
+  	return mkastnode(op, type, left, NULL, NULL, sym, intvalue);
 }
 
-// Generate and return a new label number
-// just for AST dumping purposes
+//generate and return a new label number just for AST dumping purposes
 static int gendumplabel(void) 
 {
   	static int id = 1;
   	return id++;
 }
 
-// Given an AST tree, print it out and follow the
-// traversal of the tree that genAST() follows
+//given an AST tree, print it out and follow the traversal of the tree that genAST() follows
 void dumpAST(ast *n, int label, int level) 
 {
   	int Lfalse, Lstart, Lend;
@@ -82,27 +82,28 @@ void dumpAST(ast *n, int label, int level)
       			return;
   	}
 
-  	// Reset level to -2 for A_GLUE
-  	if(n->op==A_GLUE) 
+  	//reset level to -2 for A_GLUE
+  	if(n -> op ==A_GLUE) 
   		level= -2;
   	
-  	// General AST node handling
-  	if(n->left)
+  	//general AST node handling
+  	if(n -> left)
   		dumpAST(n->left, NOLABEL, level+2);
   	
-  	if(n->right) 
+  	if(n -> right) 
   		dumpAST(n->right, NOLABEL, level+2);
 
 
   	for(int i=0; i < level; i++) 
   		fprintf(stdout, " ");
-  	switch(n->op) 
+  	
+	switch(n->op) 
   	{
     		case A_GLUE:
       			fprintf(stdout, "\n\n"); 
       			return;
     		case A_FUNCTION:
-      			fprintf(stdout, "A_FUNCTION %s\n", Gsym[n->v.id].name); 
+      			fprintf(stdout, "A_FUNCTION %s\n", n -> sym -> name); 
       			return;
     		case A_ADD:
       			fprintf(stdout, "A_ADD\n"); 
@@ -135,13 +136,16 @@ void dumpAST(ast *n, int label, int level)
       			fprintf(stdout, "A_GE\n"); 
       			return;
     		case A_INTLIT:
-      			fprintf(stdout, "A_INTLIT %d\n", n->v.intvalue); 
+      			fprintf(stdout, "A_INTLIT %d\n", n -> intvalue); 
       			return;
+		case A_STRLIT:
+			fprintf(stdout, "A_STRLIT rval label L%d\n", n -> intvalue);
+			return;
     		case A_IDENT:
-      			if(n->rvalue)
-        			fprintf(stdout, "A_IDENT rval %s\n", Gsym[n->v.id].name);
+      			if(n -> rvalue)
+        			fprintf(stdout, "A_IDENT rval %s\n", n -> sym -> name);
       			else
-        			fprintf(stdout, "A_IDENT %s\n", Gsym[n->v.id].name);
+        			fprintf(stdout, "A_IDENT %s\n", n -> sym -> name);
       			return;
     		case A_ASSIGN:
       			fprintf(stdout, "A_ASSIGN\n"); 
@@ -153,10 +157,10 @@ void dumpAST(ast *n, int label, int level)
       			fprintf(stdout, "A_RETURN\n"); 
       			return;
     		case A_FUNCCALL:
-      			fprintf(stdout, "A_FUNCCALL %s\n", Gsym[n->v.id].name); 
+      			fprintf(stdout, "A_FUNCCALL %s\n", n -> sym -> name); 
       			return;
     		case A_ADDR:
-      			fprintf(stdout, "A_ADDR %s\n", Gsym[n->v.id].name); 
+      			fprintf(stdout, "A_ADDR %s\n", n -> sym -> name); 
       			return;
     		case A_DEREF:
       			if(n->rvalue)
@@ -165,7 +169,22 @@ void dumpAST(ast *n, int label, int level)
         			fprintf(stdout, "A_DEREF\n");
       			return;
     		case A_SCALE:
-      			fprintf(stdout, "A_SCALE %d\n", n->v.size); 
+      			fprintf(stdout, "A_SCALE %d\n", n-> size); 
+      			return;
+      		case A_PREINC:
+      			fprintf(stdout, "A_PREINC %s\n", n->sym->name);
+      			return;
+    		case A_PREDEC:
+      			fprintf(stdout, "A_PREDEC %s\n", n->sym->name);
+      			return;
+    		case A_POSTINC:
+      			fprintf(stdout, "A_POSTINC\n");
+      			return;
+    		case A_POSTDEC:
+      			fprintf(stdout, "A_POSTDEC\n");
+      			return;
+    		case A_NEGATE:
+      			fprintf(stdout, "A_NEGATE\n");
       			return;
     		default:
       			fatald("Unknown dumpAST operator", n->op);

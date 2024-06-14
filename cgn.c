@@ -30,7 +30,7 @@ static int alloc_register(void)
     		}
   	}
   	fatal("Out of registers");
-  	return NOREG;		// Keep -Wall happy
+  	return NOREG;
 }
 
 // Return a register to the list of available registers.
@@ -48,6 +48,7 @@ void cgpreamble()
 {
   	freeall_registers();
   	fputs("\textern\tprintint\n", Outfile);
+	fputs("\textern\tprintchar\n",Outfile);
 }
 
 // Nothing to do
@@ -112,6 +113,14 @@ int cgloadglob(int id)
       			fatald("Bad type in cgloadglob:", Gsym[id].type);
   	}
   	return r;
+}
+
+int cgloadglobstr(int id)
+{
+	int r = alloc_register();
+	fprintf(Outfile, "\tmov\t%s, L%d\n", reglist[r], id);
+	
+	return r;
 }
 
 // Add two registers together and return
@@ -251,6 +260,20 @@ void cgglobsym(int id)
     default: fatald("Unknown typesize in cgglobsym: ", typesize);
   }
   */
+}
+
+
+void cgglobstr(int l, char *strvalue)
+{
+	char *cptr;
+	cglabell(l);
+
+	for(cptr = strvalue; *cptr; cptr++)
+	{
+		fprintf(Outfile, "\tdb\t%d\n", *cptr);
+	}
+
+	fprintf(Outfile, "\tdb\t0\n");
 }
 
 // List of comparison instructions,

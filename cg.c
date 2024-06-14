@@ -4,12 +4,51 @@
 
 //assembly code generator for x86-64
 
-//list of available registers with their names, general purpose registers..
-//and also we need a list of byte and doubleword registers... 
-static int freereg[4];
-static char *reglist[4] = { "%r8", "%r9", "%r10", "%r11" };
-static char *dreglist[4] = { "%r8d", "%r9d", "%r10d", "%r11d" };
-static char *breglist[4] = { "%r8b", "%r9b", "%r10b", "%r11b" };
+//flag to say that in which section we are giving output into
+enum { no_seg, text_seg, data_seg } currSeg = no_seg;
+
+void cgtextseg()
+{
+	if(currSeg != text_seg)
+	{
+		fputs("\t.text\n",Outfile);
+		currSeg = text_seg;
+	}
+}
+
+void cgdataseg() 
+{
+  	if(currSeg != data_seg) 
+	{
+    		fputs("\t.data\n", Outfile);
+    		currSeg = data_seg;
+  	}
+}
+
+//position of next local variable relative to stack base pointer.
+//we store the offset as positive to make aligning the stack pointer easier
+static int localOffset;
+static int stackOffset;
+
+//create the position of a new local variable.
+static int newlocaloffset(int type) 
+{
+  	//decrement the offset by a minimum of 4 bytes and allocate on the stack
+  	localOffset += (cgprimsize(type) > 4) ? cgprimsize(type) : 4;
+  	
+	return -localOffset;
+}
+
+//list of available registers and their names, we need a list of byte and doubleword registers, too
+//the list also includes the registers used to hold function parameters
+#define NUMFREEREGS 4
+#define FIRSTPARAMREG 9		//position of first parameter register
+
+static int freereg[NUMFREEREGS];
+
+static char *reglist[] =  {"%r10", "%r11", "%r12", "%r13", "%r9", "%r8", "%rcx", "%rdx", "%rsi", "%rdi"};
+static char *dreglist[] = {"%r10d", "%r11d", "%r12d", "%r13d", "%r9d", "%r8d", "%ecx", "%edx", "%esi", "%edi"};
+static char *breglist[] = {"%r10b", "%r11b", "%r12b", "%r13b", "%r9b", "%r8b", "%cl", "%dl", "%sil", "%dil"};
 
 
 //set all registers as free regis...
@@ -22,7 +61,7 @@ void freeall_registers(void)
 //returns NOREG
 static int alloc_register(void) 
 {
-  	for (int i = 0; i < 4; i++) 
+  	for (int i = 0; i < NUMFREEREGS; i++) 
 	{
     		if(freereg[i]) 
 		{
@@ -47,7 +86,6 @@ static void free_register(int reg)
 void cgpreamble() 
 {
   	freeall_registers();
-  	fputs("\t.text\n", Outfile);
 }
 
 //nothing to do
@@ -56,26 +94,62 @@ void cgpostamble()
 }
 
 //function preamble
-void cgfuncpreamble(int id) 
+void cgfuncpreamble(symt *sym) 
 {
-  	char *name = Gsym[id].name;
+	char *name = sym -> name;
+  	struct symtable *parm, *locvar;
+  	int cnt;
+  	int paramOffset = 16;		//any pushed params start at this stack offset
+  	int paramReg = FIRSTPARAMREG;	//index to the first param register in above reg lists
+
+  	//output in the text segment, reset local offset
+  	cgtextseg();
+  	localOffset = 0;
+
+  	//output the function start, save the %rsp and %rsp
   	fprintf(Outfile,
-	  		"\t.text\n"
-			"\t.globl\t%s\n"
-	    	        "\t.type\t%s, @function\n"
-	                "%s:\n" "\tpushq\t%%rbp\n"
-	                "\tmovq\t%%rsp, %%rbp\n", name, name, name);
+	  	"\t.globl\t%s\n"
+	  	"\t.type\t%s, @function\n"
+	  	"%s:\n" "\tpushq\t%%rbp\n"
+	  	"\tmovq\t%%rsp, %%rbp\n", name, name, name);
+
+  	//copy any in-register parameters to the stack, up to six of them
+  	//the remaining parameters are already on the stack
+  	for(parm = sym->member, cnt = 1; parm != NULL; parm = parm->next, cnt++) 
+	{
+    		if(cnt > 6) 
+		{
+      			parm -> posn = paramOffset;
+      			paramOffset += 8;
+    		} 
+		else 
+		{
+      			parm -> posn = newlocaloffset(parm -> type);
+      			cgstorlocal(paramReg--, parm);
+    		}
+  	}
+
+  	//for the remainder, if they are a parameter then they are 
+	//already on the stack. If only a local, make a stack position.
+  	for(locvar = Loclhead; locvar != NULL; locvar = locvar->next) 
+	{
+    		locvar->posn = newlocaloffset(locvar->type);
+  	}
+
+  	//align the stack pointer to be a multiple of 16 less than its previous value
+  	stackOffset = (localOffset + 15) & ~15;
+  	fprintf(Outfile, "\taddq\t$%d,%%rsp\n", -stackOffset);
 }
 
 //function postamble
-void cgfuncpostamble(int id) 
+void cgfuncpostamble(symt *sym) 
 {
-  	cglabel(Gsym[id].endlabel);
-  	fputs("\tpopq	%rbp\n" "\tret\n", Outfile);
+  	cglabel(sym -> endlabel);
+  	fprintf(Outfile, "\taddq\t$%d,%%rsp\n", stackOffset);
+	fputs("\tpopq	%rbp\n" "\tret\n", Outfile);
 }
 
 //load int lit value into a regis.. and  return the number of the regis...
-//for x86-64, we don't need to worry about the type.
 int cgloadint(int value, int type) 
 {
   	//first get new register
@@ -86,31 +160,132 @@ int cgloadint(int value, int type)
 }
 
 //load a value from a variable into a regis..,  return the number of the register
-int cgloadglob(int id) 
+int cgloadglob(symt *sym, int op) 
 {
-  	//get new register
+	//get a new register
   	int r = alloc_register();
 
-  	//print the code to initialise it
-  	switch(Gsym[id].type) 
+  	if(cgprimsize(sym -> type) == 8) 
 	{
-    		case P_CHAR:
-      			fprintf(Outfile, "\tmovzbq\t%s(%%rip), %s\n", Gsym[id].name, reglist[r]);
-      			break;
-    		case P_INT:
-      			fprintf(Outfile, "\tmovzbl\t%s(\%%rip), %s\n", Gsym[id].name, reglist[r]);
-      			break;
+    		if(op == A_PREINC)
+      			fprintf(Outfile, "\tincq\t%s(%%rip)\n", sym->name);
+    	
+		if(op == A_PREDEC)
+      			fprintf(Outfile, "\tdecq\t%s(%%rip)\n", sym->name);
     		
-		case P_LONG:
-    		case P_CHARPTR:
-    		case P_INTPTR:
-    		case P_LONGPTR:
-      			fprintf(Outfile, "\tmovq\t%s(\%%rip), %s\n", Gsym[id].name, reglist[r]);
-      			break;
-    		default:
-      			fatald("Bad type in cgloadglob:", Gsym[id].type);
-  	}
+		fprintf(Outfile, "\tmovq\t%s(%%rip), %s\n", sym->name, reglist[r]);
+    		if(op == A_POSTINC)
+      			fprintf(Outfile, "\tincq\t%s(%%rip)\n", sym->name);
+    		
+		if(op == A_POSTDEC)
+      			fprintf(Outfile, "\tdecq\t%s(%%rip)\n", sym->name);
+  	} 
+	else
+    		//print out the code to initialise it
+    		switch(sym -> type) 
+		{
+      			case P_CHAR:
+				if(op == A_PREINC)
+	  				fprintf(Outfile, "\tincb\t%s(%%rip)\n", sym->name);
+				
+				if(op == A_PREDEC)
+	  				fprintf(Outfile, "\tdecb\t%s(%%rip)\n", sym->name);
+				
+				fprintf(Outfile, "\tmovzbq\t%s(%%rip), %s\n", sym->name, reglist[r]);
+				if(op == A_POSTINC)
+	  				fprintf(Outfile, "\tincb\t%s(%%rip)\n", sym->name);
+				
+				if(op == A_POSTDEC)
+	  				fprintf(Outfile, "\tdecb\t%s(%%rip)\n", sym->name);
+				break;
+      			case P_INT:
+				if(op == A_PREINC)
+	  				fprintf(Outfile, "\tincl\t%s(%%rip)\n", sym->name);
+				
+				if(op == A_PREDEC)
+	  				fprintf(Outfile, "\tdecl\t%s(%%rip)\n", sym->name);
+				
+				fprintf(Outfile, "\tmovslq\t%s(%%rip), %s\n", sym->name, reglist[r]);
+				if(op == A_POSTINC)
+	  				fprintf(Outfile, "\tincl\t%s(%%rip)\n", sym->name);
+				
+				if(op == A_POSTDEC)
+	  				fprintf(Outfile, "\tdecl\t%s(%%rip)\n", sym->name);
+				break;
+      			default:
+				fatald("Bad type in cgloadglob:", sym->type);
+    		}
   	return r;
+}
+
+// Load a value from a local variable into a register.
+// Return the number of the register. If the
+// operation is pre- or post-increment/decrement,
+// also perform this action.
+int cgloadlocal(struct symtable *sym, int op) 
+{
+  	// Get a new register
+  	int r = alloc_register();
+
+  	//print out the code to initialise it
+  	if(cgprimsize(sym->type) == 8) 
+	{
+    		if(op == A_PREINC)
+      			fprintf(Outfile, "\tincq\t%d(%%rbp)\n", sym->posn);
+    		
+		if(op == A_PREDEC)
+      			fprintf(Outfile, "\tdecq\t%d(%%rbp)\n", sym->posn);
+    		
+		fprintf(Outfile, "\tmovq\t%d(%%rbp), %s\n", sym->posn, reglist[r]);
+    		if(op == A_POSTINC)
+      			fprintf(Outfile, "\tincq\t%d(%%rbp)\n", sym->posn);
+    		if(op == A_POSTDEC)
+      			fprintf(Outfile, "\tdecq\t%d(%%rbp)\n", sym->posn);
+  	} 
+	else
+    		switch (sym -> type) 
+		{
+      			case P_CHAR:
+				if(op == A_PREINC)
+	  				fprintf(Outfile, "\tincb\t%d(%%rbp)\n", sym->posn);
+				
+				if(op == A_PREDEC)
+	  				fprintf(Outfile, "\tdecb\t%d(%%rbp)\n", sym->posn);
+				
+				fprintf(Outfile, "\tmovzbq\t%d(%%rbp), %s\n", sym->posn, reglist[r]);
+				if(op == A_POSTINC)
+	  				fprintf(Outfile, "\tincb\t%d(%%rbp)\n", sym->posn);
+				
+				if(op == A_POSTDEC)
+	  				fprintf(Outfile, "\tdecb\t%d(%%rbp)\n", sym->posn);
+				break;
+      			case P_INT:
+				if(op == A_PREINC)
+	  				fprintf(Outfile, "\tincl\t%d(%%rbp)\n", sym->posn);
+				
+				if(op == A_PREDEC)
+	  				fprintf(Outfile, "\tdecl\t%d(%%rbp)\n", sym->posn);
+				
+				fprintf(Outfile, "\tmovslq\t%d(%%rbp), %s\n", sym->posn, reglist[r]);
+				if(op == A_POSTINC)
+	  				fprintf(Outfile, "\tincl\t%d(%%rbp)\n", sym->posn);
+				
+				if(op == A_POSTDEC)
+	  				fprintf(Outfile, "\tdecl\t%d(%%rbp)\n", sym->posn);
+				break;
+      			default:
+				fatald("Bad type in cgloadlocal:", sym->type);
+    		}
+  	return r;
+}
+
+
+int cgloadglobstr(int label)
+{
+	int r = alloc_register();
+	fprintf(Outfile, "\tleaq\tL%d(\%%rip), %s\n", label, reglist[r]);
+
+	return r;
 }
 
 //add two registers together and return the number of the register which having the result
@@ -148,16 +323,121 @@ int cgdiv(int r1, int r2)
   	return r1;
 }
 
-//call a function with one argument from the given register return the regis..
-int cgcall(int r, int id) 
+int cgand(int r1, int r2) 
 {
-  	//allocate new register
+  	fprintf(Outfile, "\tandq\t%s, %s\n", reglist[r1], reglist[r2]);
+  	free_register(r1);
+  	
+	return r2;
+}
+
+int cgor(int r1, int r2) 
+{
+  	fprintf(Outfile, "\torq\t%s, %s\n", reglist[r1], reglist[r2]);
+  	free_register(r1);
+  	
+	return r2;
+}
+
+int cgxor(int r1, int r2) 
+{
+  	fprintf(Outfile, "\txorq\t%s, %s\n", reglist[r1], reglist[r2]);
+  	free_register(r1);
+  	return r2;
+}
+
+int cgshl(int r1, int r2) 
+{
+  	fprintf(Outfile, "\tmovb\t%s, %%cl\n", breglist[r2]);
+  	fprintf(Outfile, "\tshlq\t%%cl, %s\n", reglist[r1]);
+  	free_register(r2);
+  
+	return r1;
+}
+
+int cgshr(int r1, int r2) 
+{
+  	fprintf(Outfile, "\tmovb\t%s, %%cl\n", breglist[r2]);
+  	fprintf(Outfile, "\tshrq\t%%cl, %s\n", reglist[r1]);
+  	free_register(r2);
+  	return r1;
+}
+
+//negate a register's value
+int cgnegate(int r) 
+{
+  	fprintf(Outfile, "\tnegq\t%s\n", reglist[r]);
+  	return r;
+}
+
+//invert a register's value
+int cginvert(int r) 
+{
+  	fprintf(Outfile, "\tnotq\t%s\n", reglist[r]);
+  	return r;
+}
+
+//logically negate a register's value
+int cglognot(int r) 
+{
+  	fprintf(Outfile, "\ttest\t%s, %s\n", reglist[r], reglist[r]);
+  	fprintf(Outfile, "\tsete\t%s\n", breglist[r]);
+  	fprintf(Outfile, "\tmovzbq\t%s, %s\n", breglist[r], reglist[r]);
+  	
+	return r;
+}
+
+//convert an integer value to a boolean value, jump if it's an IF or WHILE operation
+int cgboolean(int r, int op, int label) 
+{
+  	fprintf(Outfile, "\ttest\t%s, %s\n", reglist[r], reglist[r]);
+  	if(op == A_IF || op == A_WHILE)
+    		fprintf(Outfile, "\tje\tL%d\n", label);
+  	else 
+	{
+    		fprintf(Outfile, "\tsetnz\t%s\n", breglist[r]);
+    		fprintf(Outfile, "\tmovzbq\t%s, %s\n", breglist[r], reglist[r]);
+  	}
+  	return r;
+}
+
+//call a function with one argument from the given register return the regis..
+int cgcall(symt *sym, int numargs) 
+{
+	 //get a new register
   	int outr = alloc_register();
-  	fprintf(Outfile, "\tmovq\t%s, %%rdi\n", reglist[r]);
-  	fprintf(Outfile, "\tcall\t%s\n", Gsym[id].name);
+  	
+	//call the function
+  	fprintf(Outfile, "\tcall\t%s@PLT\n", sym->name);
+  
+	//remove any arguments pushed on the stack
+  	if(numargs > 6)
+    		fprintf(Outfile, "\taddq\t$%d, %%rsp\n", 8 * (numargs - 6));
+  	
+	//and copy the return value into our register
   	fprintf(Outfile, "\tmovq\t%%rax, %s\n", reglist[outr]);
-  	free_register(r);
   	return outr;
+}
+
+// Given a register with an argument value,
+// copy this argument into the argposn'th
+// parameter in preparation for a future function
+// call. Note that argposn is 1, 2, 3, 4, ..., never zero.
+void cgcopyarg(int r, int argposn) 
+{
+  	// If this is above the sixth argument, simply push the
+  	// register on the stack. We rely on being called with
+  	// successive arguments in the correct order for x86-64
+  	if(argposn > 6) 
+	{
+    		fprintf(Outfile, "\tpushq\t%s\n", reglist[r]);
+  	} 
+	else 
+	{
+    		// Otherwise, copy the value into one of the six registers used to hold parameter values
+    		fprintf(Outfile, "\tmovq\t%s, %s\n", reglist[r],
+	    	reglist[FIRSTPARAMREG - argposn + 1]);
+  	}
 }
 
 //shift a regis. left by a constant
@@ -168,67 +448,118 @@ int cgshlconst(int r, int val)
 }
 
 //store a register's value into a variable
-int cgstorglob(int r, int id) 
+int cgstorglob(int r, struct symtable *sym) 
 {
-  	switch (Gsym[id].type) 
+  	if(cgprimsize(sym->type) == 8) 
 	{
-    		case P_CHAR:
-      			fprintf(Outfile, "\tmovb\t%s, %s(\%%rip)\n", breglist[r], Gsym[id].name);
-      			break;
-    		case P_INT:
-      			fprintf(Outfile, "\tmovl\t%s, %s(\%%rip)\n", dreglist[r], Gsym[id].name);
-      			break;
-    		
-		case P_LONG:
-    		case P_CHARPTR:
-    		case P_INTPTR:
-    		case P_LONGPTR:
-      			fprintf(Outfile, "\tmovq\t%s, %s(\%%rip)\n", reglist[r], Gsym[id].name);
-      			break;
-    		default:
-      			fatald("Bad type in cgloadglob:", Gsym[id].type);
-  	}
+    		fprintf(Outfile, "\tmovq\t%s, %s(%%rip)\n", reglist[r], sym->name);
+  	} 
+	else
+    		switch(sym -> type) 
+		{
+      			case P_CHAR:
+				fprintf(Outfile, "\tmovb\t%s, %s(%%rip)\n", breglist[r], sym->name);
+				break;
+      			case P_INT:
+				fprintf(Outfile, "\tmovl\t%s, %s(%%rip)\n", dreglist[r], sym->name);
+				break;
+      			default:
+				fatald("Bad type in cgstorglob:", sym->type);
+    		}
   	return r;
 }
 
-//list of type sizes in P_XXX order and 0 means no size.
-static int psize[] = { 0, 0, 1, 4, 8, 8, 8, 8, 8 };
+//store a register's value into a local variable
+int cgstorlocal(int r, struct symtable *sym) 
+{
+  	if(cgprimsize(sym->type) == 8) 
+	{
+    		fprintf(Outfile, "\tmovq\t%s, %d(%%rbp)\n", reglist[r], sym->posn);
+  	} 
+	else
+    		switch (sym -> type) 
+		{
+      			case P_CHAR:
+				fprintf(Outfile, "\tmovb\t%s, %d(%%rbp)\n", breglist[r], sym->posn);
+				break;
+      			case P_INT:
+				fprintf(Outfile, "\tmovl\t%s, %d(%%rbp)\n", dreglist[r], sym->posn);
+				break;
+      			default:
+				fatald("Bad type in cgstorlocal:", sym->type);
+    		}
+  	return r;
+}
 
 //return size of primitive type in byte
 int cgprimsize(int type) 
 {
-  	//check the type is valid
-  	if(type < P_NONE || type > P_LONGPTR)
-    		fatal("wrong type in cgprimsize()");
-  	return (psize[type]);
+	if(ptrtype(type))
+    		return 8;
+  	
+	switch(type) 
+	{
+    		case P_CHAR:
+      			return 1;
+    		case P_INT:
+      			return 4;
+    		case P_LONG:
+      			return 8;
+    		default:
+      			fatald("Bad type in cgprimsize:", type);
+  	}
+  	return 0;
 }
 
 //generate a global symbol
-void cgglobsym(int id) 
+void cgglobsym(symt *node) 
 {
-  	int typesize;
-  	
-	//get the size of type
-  	typesize = cgprimsize(Gsym[id].type);
+	int typesize;
 
-  	//generating global identity and the label
-  	fprintf(Outfile, "\t.data\n" "\t.globl\t%s\n", Gsym[id].name);
-  	fprintf(Outfile, "%s:", Gsym[id].name);
+  	if(node == NULL)
+    		return;
+  	if(node -> stype == S_FUNCTION)
+    		return;
 
-  	//initialise the space for data
-  	for(int i=0; i < Gsym[id].size; i++) 
+  	//get the size of the type
+  	typesize = cgprimsize(node->type);
+
+  	//generate the global identity and the label
+  	cgdataseg();
+  	fprintf(Outfile, "\t.globl\t%s\n", node->name);
+  	fprintf(Outfile, "%s:", node->name);
+
+  	//generate the space
+  	for(int i = 0; i < node->size; i++) 
 	{
     		switch(typesize) 
 		{
-      			case 1: fprintf(Outfile, "\t.byte\t0\n"); 
+      			case 1:
+				fprintf(Outfile, "\t.byte\t0\n");
 				break;
-      			case 4: fprintf(Outfile, "\t.long\t0\n"); 
+      			case 4:
+				fprintf(Outfile, "\t.long\t0\n");
 				break;
-      			case 8: fprintf(Outfile, "\t.quad\t0\n"); 
+      			case 8:
+				fprintf(Outfile, "\t.quad\t0\n");
 				break;
-      			default: fatald("Unknown typesize in cgglobsym: ", typesize);
+      			default:
+				fatald("Unknown typesize in cgglobsym: ", typesize);
     		}
   	}
+}
+
+void cgglobstr(int l, char *strvalue)
+{
+	char *cptr;
+	cglabel(l);
+
+	for(cptr = strvalue; *cptr; cptr++)
+	{
+		fprintf(Outfile, "\t.byte\t%d\n", *cptr);
+	}
+
+	fprintf(Outfile,"\t.byte\t0\n");
 }
 
 //list of comparison instructions, 
@@ -246,7 +577,8 @@ int cgcompare_and_set(int ASTop, int r1, int r2)
   	fprintf(Outfile, "\t%s\t%s\n", cmplist[ASTop - A_EQ], breglist[r2]);
   	fprintf(Outfile, "\tmovzbq\t%s, %s\n", breglist[r2], reglist[r2]);
   	free_register(r1);
-  	return r2;
+  	
+	return r2;
 }
 
 //generate a label
@@ -286,10 +618,10 @@ int cgwiden(int r, int oldtype, int newtype)
 }
 
 //gen code to return a value from a function
-void cgreturn(int reg, int id) 
+void cgreturn(int reg, symt *sym) 
 {
   	//gen code depending on the function's type
-  	switch(Gsym[id].type) 
+  	switch(sym -> type) 
 	{
     		case P_CHAR:
       			fprintf(Outfile, "\tmovzbl\t%s, %%eax\n", breglist[reg]);
@@ -301,33 +633,44 @@ void cgreturn(int reg, int id)
       			fprintf(Outfile, "\tmovq\t%s, %%rax\n", reglist[reg]);
       			break;
     		default:
-      			fatald("Bad function type in cgreturn:", Gsym[id].type);
+      			fatald("Bad function type in cgreturn:", sym -> type);
   	}
-  	cgjump(Gsym[id].endlabel);
+  	cgjump(sym -> endlabel);
 }
 
 
-//write instruction to load the address of a global ident into a var, return a new regis..
-int cgaddress(int id)
+//code to load the address of a global ident into a var, return a new regis..
+int cgaddress(symt *sym)
 {
   	int r = alloc_register();
-
-  	fprintf(Outfile, "\tleaq\t%s(%%rip), %s\n", Gsym[id].name, reglist[r]);
-  	return r;
+	
+	if(sym -> class == C_GLOBAL)
+    		fprintf(Outfile, "\tleaq\t%s(%%rip), %s\n", sym -> name, reglist[r]);
+  	else
+    		fprintf(Outfile, "\tleaq\t%d(%%rbp), %s\n", sym -> posn, reglist[r]);
+  	
+	return r;
 }
 
-//dereference a pointer to get the value it pointing at into the same register
+//dereference a pointer to get the value it pointing at into regis..
 int cgderef(int r, int type) 
 {
-  	switch (type) 
+	//get the type that we are pointing to
+  	int newtype = value_at(type);
+  	
+	//now get the size of this type
+  	int size = cgprimsize(newtype);
+  	
+	switch(size) 
 	{
-    		case P_CHARPTR:
+		case 1:
       			fprintf(Outfile, "\tmovzbq\t(%s), %s\n", reglist[r], reglist[r]);
       			break;
-    		case P_INTPTR:
-      			fprintf(Outfile, "\tmovq\t(%s), %s\n", reglist[r], reglist[r]);
+    		case 2:
+      			fprintf(Outfile, "\tmovslq\t(%s), %s\n", reglist[r], reglist[r]);
       			break;
-    		case P_LONGPTR:
+    		case 4:
+    		case 8:
       			fprintf(Outfile, "\tmovq\t(%s), %s\n", reglist[r], reglist[r]);
       			break;
     		default:
@@ -336,21 +679,23 @@ int cgderef(int r, int type)
   	return r;
 }
 
-// Store through a dereferenced pointer
-int cgstorderef(int r1, int r2, int type) {
-  	switch (type) 
+//store through a dereferenced pointer
+int cgstorderef(int r1, int r2, int type) 
+{
+	int size = cgprimsize(type);
+
+  	switch(size) 
   	{
-    		case P_CHAR:
+		case 1:
       			fprintf(Outfile, "\tmovb\t%s, (%s)\n", breglist[r1], reglist[r2]);
       			break;
-    		case P_INT:
-      			fprintf(Outfile, "\tmovq\t%s, (%s)\n", reglist[r1], reglist[r2]);
-      			break;
-    		case P_LONG:
+    		case 2:
+    		case 4:
+    		case 8:
       			fprintf(Outfile, "\tmovq\t%s, (%s)\n", reglist[r1], reglist[r2]);
       			break;
     		default:
-      		fatald("Can't cgstoderef on type:", type);
+      			fatald("Can't cgstoderef on type:", type);
   	}
   	return r1;
 }
