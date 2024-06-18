@@ -119,18 +119,16 @@ static ast *array_access(void)
   	return left;
 }
 
-// Parse a postfix expression and return
-// an AST node representing it. The
-// identifier is already in Text.
+//parse a postfix expression and return an AST node representing it, identifier is already in Text.
 static ast *postfix(void) 
 {
   	ast *n;
   	symt *varptr;
 
-  	// Scan in the next token to see if we have a postfix expression
+  	//scan in the next token to see if we have a postfix expression
   	scan(&Token);
 
-  	// Function call
+  	//function call
   	if(Token.token == T_LPAREN)
     		return funccall();
 
@@ -173,8 +171,7 @@ static ast *primary(void)
   	switch(Token.token) 
   	{
     		case T_INTLIT:
-      			// For an INTLIT token, make a leaf AST node for it.
-      			// Make it a P_CHAR if it's within the P_CHAR range
+      		//for INTLIT token, make leaf AST node for it, make it P_CHAR if it's within P_CHAR range
       			if((Token.intvalue) >= 0 && (Token.intvalue < 256))
 				n = mkastleaf(A_INTLIT, P_CHAR, NULL, Token.intvalue);
       			else
@@ -369,8 +366,7 @@ ast *binexpr(int ptp)
   	int ASTop;
   	int tokentype;
 
-  	// Get the tree on the left.
-  	// Fetch the next token at the same time.
+  	//get tree on the left, and fetch the next token at the same time.
   	left = prefix();
 
   	// If we hit one of several terminating tokens, return just the left node
@@ -386,7 +382,7 @@ ast *binexpr(int ptp)
   	// equal to the previous token's precedence
   	while((op_precedence(tokentype) > ptp) || (rightassoc(tokentype) && op_precedence(tokentype) == ptp)) 
   	{
-    		// Fetch in the next integer literal
+    		//fetch in the next integer literal
     		scan(&Token);
 
     		// Recursively call binexpr() with the

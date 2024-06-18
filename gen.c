@@ -247,7 +247,7 @@ int genAST(ast *n, int label, int parentASTop)
       			}
     		case A_POSTINC:
     		case A_POSTDEC:
-      			// Load and decrement the variable's value into a register and post increment/decrement it
+      			//load and decrement variable's value into a register and post increment/decrement it
       			if(n->sym->class == C_GLOBAL)
 				return cgloadglob(n -> sym, n->op);
       			else
@@ -290,7 +290,7 @@ void genfreeregs()
 }
 void genglobsym(symt *node) 
 {
-  	cgglobsym(node	);
+  	cgglobsym(node);
 }
 int genglobstr(char *strvalue)
 {

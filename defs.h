@@ -10,7 +10,7 @@ enum
   	TEXTLEN = 512			// Length of identifiers in input
 };
 
-// Commands and default filenames
+//commands and default filenames
 #define AOUT "a.out"
 #ifdef __NASM__
 #define ASCMD "nasm -f elf64 -o "
@@ -68,8 +68,7 @@ enum
   	A_NEGATE, A_INVERT, A_LOGNOT, A_TOBOOL
 };
 
-//primitive types. The bottom 4 bits is an integer
-//value that represents the level of indirection,
+//primitive types, the bottom 4 bits is an integer value that represents the level of indirection,
 //e.g. 0= no pointer, 1= pointer, 2= pointer pointer etc.
 enum 
 {

@@ -97,7 +97,7 @@ void cgpostamble()
 void cgfuncpreamble(symt *sym) 
 {
 	char *name = sym -> name;
-  	struct symtable *parm, *locvar;
+  	symt *parm, *locvar;
   	int cnt;
   	int paramOffset = 16;		//any pushed params start at this stack offset
   	int paramReg = FIRSTPARAMREG;	//index to the first param register in above reg lists
@@ -115,7 +115,7 @@ void cgfuncpreamble(symt *sym)
 
   	//copy any in-register parameters to the stack, up to six of them
   	//the remaining parameters are already on the stack
-  	for(parm = sym->member, cnt = 1; parm != NULL; parm = parm->next, cnt++) 
+  	for(parm = sym -> member, cnt = 1; parm != NULL; parm = parm -> next, cnt++) 
 	{
     		if(cnt > 6) 
 		{
@@ -218,29 +218,27 @@ int cgloadglob(symt *sym, int op)
   	return r;
 }
 
-// Load a value from a local variable into a register.
-// Return the number of the register. If the
-// operation is pre- or post-increment/decrement,
-// also perform this action.
-int cgloadlocal(struct symtable *sym, int op) 
+//load a value from a local variable into a register, return the number of the register. 
+//if the operation is pre- or post-increment/decrement, also perform this action.
+int cgloadlocal(symt *sym, int op) 
 {
-  	// Get a new register
+  	//get a new register
   	int r = alloc_register();
 
   	//print out the code to initialise it
-  	if(cgprimsize(sym->type) == 8) 
+  	if(cgprimsize(sym -> type) == 8) 
 	{
     		if(op == A_PREINC)
-      			fprintf(Outfile, "\tincq\t%d(%%rbp)\n", sym->posn);
+      			fprintf(Outfile, "\tincq\t%d(%%rbp)\n", sym -> posn);
     		
 		if(op == A_PREDEC)
-      			fprintf(Outfile, "\tdecq\t%d(%%rbp)\n", sym->posn);
+      			fprintf(Outfile, "\tdecq\t%d(%%rbp)\n", sym -> posn);
     		
-		fprintf(Outfile, "\tmovq\t%d(%%rbp), %s\n", sym->posn, reglist[r]);
+		fprintf(Outfile, "\tmovq\t%d(%%rbp), %s\n", sym -> posn, reglist[r]);
     		if(op == A_POSTINC)
-      			fprintf(Outfile, "\tincq\t%d(%%rbp)\n", sym->posn);
+      			fprintf(Outfile, "\tincq\t%d(%%rbp)\n", sym -> posn);
     		if(op == A_POSTDEC)
-      			fprintf(Outfile, "\tdecq\t%d(%%rbp)\n", sym->posn);
+      			fprintf(Outfile, "\tdecq\t%d(%%rbp)\n", sym -> posn);
   	} 
 	else
     		switch (sym -> type) 
@@ -440,7 +438,7 @@ void cgcopyarg(int r, int argposn)
   	}
 }
 
-//shift a regis. left by a constant
+//shift a regis, left by a constant
 int cgshlconst(int r, int val) 
 {
   	fprintf(Outfile, "\tsalq\t$%d, %s\n", val, reglist[r]);

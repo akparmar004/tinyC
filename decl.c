@@ -38,6 +38,7 @@ int parse_type(void)
 
   	//we will return with next token in "Token"..
   	return type;
+
 }
 
 // variable_declaration: type identifier ';' | type identifier '[' INTLIT ']' ';' ;
@@ -48,7 +49,7 @@ symt *var_declaration(int type, int class)
 {
 	symt *sym = NULL;
 
-  	// See if this has already been declared
+  	//see if this has already been declared
   	switch(class) 
 	{
     		case C_GLOBAL:
@@ -60,11 +61,10 @@ symt *var_declaration(int type, int class)
 				fatals("Duplicate local variable declaration", Text);
   	}
 
-  	// Text now has the identifier's name.
-  	// If the next token is a '['
+  	//text now has the identifier's name, if the next token is a '['
   	if(Token.token == T_LBRACKET) 
 	{
-    		// Skip past the '['
+    		//skip past the '['
     		scan(&Token);
 
     		// Check we have an array size
@@ -82,13 +82,13 @@ symt *var_declaration(int type, int class)
 	  				fatal("For now, declaration of local arrays is not implemented");
       			}
     		}
-    	// Ensure we have a following ']'
+    	//ensure we have a following ']'
     	scan(&Token);
     	match(T_RBRACKET, "]");
   	} 
 	else 
 	{
-    		// Add this as a known scalar and generate its space in assembly
+    		//add this as a known scalar and generate its space in assembly
     		switch(class) 
 		{
       			case C_GLOBAL:
@@ -117,20 +117,18 @@ static int param_declaration(symt *funcsym)
   	int paramcnt = 0;
   	symt *protoptr = NULL;
 
-  	// If there is a prototype, get the pointer
-  	// to the first prototype parameter
+  	//if there is a prototype, get the pointer to the first prototype parameter
   	if(funcsym != NULL)
-    		protoptr = funcsym->member;
+    		protoptr = funcsym -> member;
 
-  	// Loop until the final right parentheses
+  	//loop until the final right parentheses
   	while(Token.token != T_RPAREN) 
 	{
-    		//Get the type and identifier and add it to the symbol table
+    		//get the type and identifier and add it to the symbol table
     		type = parse_type();
     		ident();
 
-    		// We have an existing prototype.
-    		// Check that this type matches the prototype.
+    		//we have an existing prototype, check that this type matches the prototype.
     		if(protoptr != NULL) 
 		{
       			if(type != protoptr->type)
@@ -139,12 +137,12 @@ static int param_declaration(symt *funcsym)
     		} 
 		else 
 		{
-      			// Add a new parameter to the new parameter list
+      			//add new param to the new parameter list
       			var_declaration(type, C_PARAM);
     		}
     		paramcnt++;
 
-    		// Must have a ',' or ')' at this point
+    		//must have a ',' or ')' at this point
     		switch(Token.token) 
 		{
       			case T_COMMA:
@@ -157,7 +155,7 @@ static int param_declaration(symt *funcsym)
     		}
   	}
 
-  	// Check that the number of parameters in this list matches any existing prototype
+  	//check that the number of parameters in this list matches any existing prototype
   	if((funcsym != NULL) && (paramcnt != funcsym->nelems))
     		fatals("Parameter count mismatch for function", funcsym->name);
 
@@ -175,76 +173,71 @@ ast *function_declaration(int type)
   	symt *oldfuncsym, *newfuncsym = NULL;
   	int endlabel, paramcnt;
 
-  	// Text has the identifier's name. If this exists and is a
-  	// function, get the id. Otherwise, set oldfuncsym to NULL.
+  	//text has the identifier's name, if this exists and is a
+	//function, get the id, otherwise set oldfuncsym to NULL.
   	if((oldfuncsym = findsymbol(Text)) != NULL)
-    		if(oldfuncsym->stype != S_FUNCTION)
+    		if(oldfuncsym -> stype != S_FUNCTION)
       			oldfuncsym = NULL;
 
-  	// If this is a new function declaration, get a
-  	// label-id for the end label, and add the function
-  	// to the symbol table,
+  	//if this is a new function declaration, get a label-id for the end label, and add the function
+  	//to the symbol table,
   	if(oldfuncsym == NULL) 
 	{
     		endlabel = genlabel();
     		newfuncsym = addglob(Text, type, S_FUNCTION, C_GLOBAL, endlabel);
   	}
   	
-	// Scan in the '(', any parameters and the ')'.
-  	// Pass in any existing function prototype pointer
+	//scan in the '(', any parameters and the ')', pass in any existing function prototype pointer
   	lparen();
   	paramcnt = param_declaration(oldfuncsym);
   	rparen();
 
-  	// If this is a new function declaration, update the
-  	// function symbol entry with the number of parameters.
-  	// Also copy the parameter list into the function's node.
+  	//if this is new function declaration, then update the function symbol entry with number of parameters
+  	//and also copy the parameter list into the function's node.
   	if(newfuncsym) 
 	{
     		newfuncsym -> nelems = paramcnt;
     		newfuncsym -> member = Parmhead;
     		oldfuncsym = newfuncsym;
   	}
-  	// Clear out the parameter list
+  	
+	//clear out the parameter list
   	Parmhead = Parmtail = NULL;
 
-  	// Declaration ends in a semicolon, only a prototype.
+  	//declaration ends in a semicolon, only a prototype.
   	if(Token.token == T_SEMI) 
 	{
     		scan(&Token);
     		return NULL;
   	}
-  	// This is not just a prototype.
-  	// Set the Functionid global to the function's symbol pointer
+
+  	//this is not just a prototype.
+  	//set the Functionid global to the function's symbol pointer
   	Functionid = oldfuncsym;
 
-  	// Get the AST tree for the compound statement
+  	//get the AST tree for the compound statement
   	tree = compound_statement();
 
-  	// If the function type isn't P_VOID ..
+  	//if the function type isn't P_VOID ..
   	if(type != P_VOID) 
 	{
 
-    		// Error if no statements in the function
+    		//error if no statements in the function
     		if(tree == NULL)
       			fatal("No statements in function with non-void type");
 
-    	// Check that the last AST operation in the
-    	// compound statement was a return statement
-    	finalstmt = (tree->op == A_GLUE) ? tree->right : tree;
-    	if(finalstmt == NULL || finalstmt->op != A_RETURN)
-      		fatal("No return for function with non-void type");
+    		//check that the last AST operation in compound statement was a return statement
+    		finalstmt = (tree->op == A_GLUE) ? tree->right : tree;
+    	
+		if(finalstmt == NULL || finalstmt->op != A_RETURN)
+      			fatal("No return for function with non-void type");
   	}
-  	// Return an A_FUNCTION node which has the function's symbol pointer
-  	// and the compound statement sub-tree
+  	//return an A_FUNCTION node which has the function's symbol pointer and the compound statement sub-tree
   	return mkastunary(A_FUNCTION, type, tree, oldfuncsym, endlabel);
 }
 
-
-
-
 //parse one or more global declars, either vars or functs
-void global_declarations(void) 
+void global_declarations(vorid) 
 {
   	ast *tree;
   	int type;
@@ -258,14 +251,14 @@ void global_declarations(void)
 
     		if(Token.token == T_LPAREN) 
 		{
-			//parse the function declaration and generate the assembly code..
+			//parse function declaration and generate assembly code..
        			tree = function_declaration(type);
        			
 			if(tree == NULL)
 				continue;
 		
 			if(O_dumpAST) 
-			{ 
+			{
 				dumpAST(tree, NOLABEL, 0); 
 				fprintf(stdout, "\n\n"); 
 			}
@@ -285,4 +278,4 @@ void global_declarations(void)
     		if(Token.token == T_EOF)
       			break;
   	}
-}
+}	

@@ -4,15 +4,15 @@
 
 //symbol table functions to store the info about idents...
 
-// Append a node to the singly-linked list pointed to by head or tail
+//append a node to the singly-linked list pointed to by head or tail
 void appendsym(symt **head, symt **tail, symt *node)
 {
 
-  	// Check for valid pointers
+  	//check for valid pointers
   	if(head == NULL || tail == NULL || node == NULL)
     		fatal("Either head, tail or node is NULL in appendsym");
 
-  	// Append to the list
+  	//append to the list
   	if(*tail) 
   	{
     		(*tail) -> next = node;
@@ -27,14 +27,14 @@ void appendsym(symt **head, symt **tail, symt *node)
 symt *newsym(char *name, int type, int stype, int class, int size, int posn) 
 {
 
-  	// Get a new node
+  	//get new node
   	symt *node = (symt *) malloc(sizeof(symt));
   	if(node == NULL)
     		fatal("Unable to malloc a symbol table node in newsym");
 
   	// Fill in the values
-  	node->name = strdup(name);
-	node->type = type;
+  	node -> name = strdup(name);
+	node -> type = type;
   	node->stype = stype;
   	node->class = class;
   	node->size = size;
@@ -42,23 +42,23 @@ symt *newsym(char *name, int type, int stype, int class, int size, int posn)
   	node->next = NULL;
   	node->member = NULL;
 
-  	// Generate any global space
+  	//generate any global space
   	if(class == C_GLOBAL)
     		genglobsym(node);
   	
   	return node;
 }
 
-// Add a symbol to the global symbol list
+//add symbol to global symbol list
 symt *addglob(char *name, int type, int stype, int class, int size) 
 {
   	symt *sym = newsym(name, type, stype, class, size, 0);
-  	appendsym(&Globhead, &Globtail, sym);
+	appendsym(&Globhead, &Globtail, sym);
   	
   	return sym;
 }
 
-// Add a symbol to the local symbol list
+//add a symbol to the local symbol list
 symt *addlocl(char *name, int type, int stype, int class, int size) 
 {
   	symt *sym = newsym(name, type, stype, class, size, 0);
@@ -70,18 +70,16 @@ symt *addlocl(char *name, int type, int stype, int class, int size)
 // Add a symbol to the parameter list
 symt *addparm(char *name, int type, int stype, int class, int size) 
 {
-  	symt *sym = newsym(name, type, stype, class, size, 0);
+ 	symt *sym = newsym(name, type, stype, class, size, 0);
   	appendsym(&Parmhead, &Parmtail, sym);
   	
   	return sym;
 }
 
-// Search for a symbol in a specific list.
-// Return a pointer to the found node or NULL if not found.
+//search for a symbol in a specific list, return a pointer to the found node or NULL if not found.
 static symt *findsyminlist(char *s, symt *list) 
 {
-
-  	for(; list != NULL; list = list->next)
+  	for( ; list != NULL; list = list -> next)
     		if((list->name != NULL) && !strcmp(s, list->name))
       			return list;
   	
@@ -94,18 +92,20 @@ symt *findglob(char *s)
   	return findsyminlist(s, Globhead);
 }
 
-// Determine if the symbol s is in the local symbol table.
-// Return a pointer to the found node or NULL if not found.
-struct symtable *findlocl(char *s) {
-  struct symtable *node;
+//determine if the symbol s is in the local symbol table. 
+//return a pointer to the found node or NULL if not found.
+symt *findlocl(char *s) 
+{
+  	symt *node;
 
-  // Look for a parameter if we are in a function's body
-  if (Functionid) {
-    node = findsyminlist(s, Functionid->member);
-    if (node)
-      return (node);
-  }
-  return (findsyminlist(s, Loclhead));
+  	//look for a parameter if we are in a function's body
+  	if(Functionid) 
+	{
+    		node = findsyminlist(s, Functionid->member);
+    		if(node)
+      			return node;
+  	}
+  	return findsyminlist(s, Loclhead);
 }
 
 // Determine if the symbol s is in the symbol table.
@@ -130,14 +130,13 @@ symt *findsymbol(char *s)
   	return findsyminlist(s, Globhead);
 }
 
-// Find a composite type.
-// Return a pointer to the found node or NULL if not found.
+//find a composite type, return a pointer to the found node or NULL if not found.
 symt *findcomposite(char *s) 
 {
   	return findsyminlist(s, Comphead);
 }
 
-// Reset the contents of the symbol table
+//reset the contents of the symbol table
 void clear_symtable(void) 
 {
   	Globhead = Globtail = NULL;
@@ -146,7 +145,7 @@ void clear_symtable(void)
   	Comphead = Comptail = NULL;
 }
 
-// Clear all the entries in the local symbol table
+//clear all the entries in the local symbol table
 void freeloclsyms(void) 
 {
   	Loclhead = Locltail = NULL;

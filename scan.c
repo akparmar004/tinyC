@@ -324,38 +324,38 @@ int scan(struct token *t)
     		case '>':
       			if((c = next()) == '=') 
       			{
-				t->token = T_GE;
+				t -> token = T_GE;
       			} 
       			else if(c == '>') 
       			{
-				t->token = T_RSHIFT;
+				t -> token = T_RSHIFT;
       			} 
       			else 
       			{
 				putback(c);
-				t->token = T_GT;
+				t -> token = T_GT;
       			}
       			break;
     		case '&':
       			if((c = next()) == '&') 
       			{
-				t->token = T_LOGAND;
+				t -> token = T_LOGAND;
       			} 
       			else 
       			{
 				putback(c);
-				t->token = T_AMPER;
+				t -> token = T_AMPER;
       			}
       			break;
       		case '|':
       			if((c = next()) == '|') 
       			{
-				t->token = T_LOGOR;
+				t -> token = T_LOGOR;
       			} 
       			else 
       			{
 				putback(c);
-				t->token = T_OR;
+				t -> token = T_OR;
       			}
       			break;
 		case '\'':
@@ -366,14 +366,14 @@ int scan(struct token *t)
 			break;
 		case '"':
 			scanstr(Text);
-			t->token = T_STRLIT;
+			t -> token = T_STRLIT;
 			break;
     		default:
       			//if it's a digit, scan int lit value in
       			if(isdigit(c)) 
       			{
-				t->intvalue = scanint(c);
-				t->token = T_INTLIT;
+				t -> intvalue = scanint(c);
+				t -> token = T_INTLIT;
 				break;
       			} 
       			else if (isalpha(c) || '_' == c) 
@@ -384,11 +384,11 @@ int scan(struct token *t)
 				//if it's a recognised keyword, then ret..
 				if((tokentype = keyword(Text)) != 0) 
 				{
-	  				t->token = tokentype;
+	  				t -> token = tokentype;
 	  				break;
 				}
 				//not a recognised keyword, so it must be an identifier
-				t->token = T_IDENT;
+				t -> token = T_IDENT;
 				break;
       			}
       			//the character isn't part of any recognised token, error

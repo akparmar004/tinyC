@@ -164,17 +164,17 @@ int main(int argc, char *argv[])
   	char *objlist[MAXOBJ];
   	int i, objcnt = 0;
 
-  	// Initialise our variables
+  	//initialise our variables
   	O_dumpAST = 0;
   	O_keepasm = 0;
   	O_assemble = 0;
   	O_verbose = 0;
   	O_dolink = 1;
 
-  	// Scan for command-line options
+  	//scan for command-line options
   	for(i = 1; i < argc; i++) 
   	{
-    		// No leading '-', stop scanning for options
+    		//no leading '-', stop scanning for options
     		if(*argv[i] != '-')
       			break;
 
@@ -208,11 +208,11 @@ int main(int argc, char *argv[])
     		}
   	}
 
-  	// Ensure we have at lease one input file argument
+  	//check that we have at leaset one input file argument
   	if(i >= argc)
     		usage(argv[0]);
 
-  	// Work on each input file in turn
+  	//work on each input file in turn
   	while(i < argc) 
   	{
     		asmfile = do_compile(argv[i]);	// Compile the source file
