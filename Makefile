@@ -1,22 +1,18 @@
-headfiles = decl.h defs.h data.h 
+#define the location of the include directory and location to install the compiler binary
+INCDIR=/tmp/include
+BINDIR=/tmp
 
-files = cg.c decl.c expr.c gen.c main.c misc.c scan.c stmt.c sym.c tree.c types.c
+HSRCS= data.h decl.h defs.h incdir.h
+SRCS= cg.c decl.c expr.c gen.c main.c misc.c opt.c scan.c stmt.c sym.c tree.c types.c
 
-filesn = cgn.c decl.c expr.c gen.c main.c misc.c scan.c stmt.c sym.c tree.c types.c
+cwj: $(SRCS) $(HSRCS)
+	cc -o cwj -g -Wall -DINCDIR=\"$(INCDIR)\" $(SRCS)
 
-jarvis: $(files) $(headfiles)
-	cc -o jarvis -g -Wall $(files)
+incdir.h:
+	echo "#define INCDIR \"$(INCDIR)\"" > incdir.h
 
-jarvisn: $(filesn) $(headfiles)
-	cc -D__NASM__ -o jarvisn -g -Wall $(filesn)
-
-test: jarvis tests/input55.c 
-	./jarvis 
-	cc -o out out.s 
-	./out
-
-test28n: jarvisn tests/input28.c lib/printint.c
-	./jarvisn tests/input28.c
-	nasm -f elf64 out.s
-	cc -no-pie -o out lib/printint.c out.o
-	./out
+install: cwj
+	mkdir -p $(INCDIR)
+	rsync -a include/. $(INCDIR)
+	cp cwj $(BINDIR)
+	chmod +x $(BINDIR)/cwj

@@ -2,257 +2,450 @@
 #include "data.h"
 #include "decl.h"
 
-//lexical scanner
+// Lexical Scaner
 
-//return position of char c in string s or -1 if c not available..
+// Return the position of character c in string s, or -1 if c not found
 static int chrpos(char *s, int c) 
 {
-  	char *p;
-
-  	p = strchr(s, c);
-  	return (p ? p - s : -1);
+  	int i;
+  	for(i = 0; s[i] != '\0'; i++)
+	{
+    		if(s[i] == (char) c)
+      			return (i);
+	}
+  	return (-1);
 }
 
-//get the next char from the input file... with fgetc..
-static int next(void)
+//get next character from input file.
+static int next(void) 
 {
-  	int c;
+  	int c, l;
 
-  	if(Putback)
-       	{				
-    		c = Putback;		//use putback if needed
+  	if(Putback) 
+  	{				//use the character put
+    		c = Putback;		//back if there is one
     		Putback = 0;
-    		return c;
+    		
+    		return (c);
   	}
 
-  	c = fgetc(Infile);		//read char from input file
-  	if('\n' == c)
-    		Line++;			//if it's "\n" then increment line count
-  	
-	return c;
+  	c = fgetc(Infile);		//read from input file
+
+  	while(Linestart && c == '#') 
+  	{				//we've hit a pre-processor statement
+    		Linestart = 0;		//no longer at the start of the line
+    		scan(&Token);		//get the line number into l
+    		if (Token.token != T_INTLIT)
+      			fatals("Expecting pre-processor line number, got:", Text);
+    		l = Token.intvalue;
+
+    		scan(&Token);		//get the filename in Text
+    		if (Token.token != T_STRLIT)
+      			fatals("Expecting pre-processor file name, got:", Text);
+
+    		if (Text[0] != '<') 
+    		{						//if this is a real filename
+      			if (strcmp(Text, Infilename))		//and not the one we have now
+				Infilename = strdup(Text);	//save it. Then update the line num
+      			
+      			Line = l;
+    		}
+
+    		while((c = fgetc(Infile)) != '\n');	//skip to end of line
+    			
+		c = fgetc(Infile);			//and get the next character
+    		Linestart = 1;				//now back at the start of the line
+  	}
+
+  	Linestart = 0;		//no longer at start of line
+  	if('\n' == c) 
+  	{
+    		Line++;			//increment line count
+    		Linestart = 1;		//now back at start of line
+  	}
+  	return c;
 }
 
-//put back an unwanted character
+// Put back an unwanted character
 static void putback(int c) 
 {
   	Putback = c;
 }
 
-//skip chars like i.e. whitespace, newlines,  and return the first character we do need to deal with...
+// Skip past input that we don't need to deal with,  i.e. whitespace, newlines. Return the first
+// character we do need to deal with.
 static int skip(void) 
 {
   	int c;
 
   	c = next();
   	while(' ' == c || '\t' == c || '\n' == c || '\r' == c || '\f' == c) 
-	{
+  	{
     		c = next();
   	}
   	return c;
 }
 
-static int scanch(void)
+// Read in a hexadecimal constant from the input
+static int hexchar(void) 
 {
-	int c;
+  	int c, h, n = 0, f = 0;
 
-	c = next();
-	if(c == '\\')
-	{
-		switch(c = next())
-		{
-			case 'a':
-				return '\a';
-			case 'b':
-				return '\b';
-			case 'f':
-				return '\f';
-			case 'n':
-				return '\n';
-			case 'r':
-				return '\r';
-			case 't':
-				return '\t';
-			case 'v':
-				return '\v';
-			case '\\':
-				return '\\';
-			case '"':
-				return '"';
-			case '\'':
-				return '\'';
-			default :
-				fatalc("unknown escape sequence", c);
-		}
-	}
-	return c;
+  	// Loop getting characters
+  	while(isxdigit(c = next())) 
+  	{
+    		// Convert from char to int value
+    		h = chrpos("0123456789abcdef", tolower(c));
+    		
+    		// Add to running hex value
+    		n = n * 16 + h;
+    		f = 1;
+  	}
+  	// We hit a non-hex character, put it back
+  	putback(c);
+  	// Flag tells us we never saw any hex characters
+  	if (!f)
+    		fatal("missing digits after '\\x'");
+  	
+  	if(n > 255)
+    		fatal("value out of range after '\\x'");
+  	
+  	return n;
 }
 
+// Return the next character from a character or string literal
+static int scanch(void) 
+{
+  	int i, c, c2;
 
-//scan and return an int lit value 
+  	//get the next input character and interpret metacharacters that start with a backslash
+  	c = next();
+  	if(c == '\\') 
+  	{
+    		switch(c = next()) 
+    		{
+      			case 'a':
+				return ('\a');
+      			case 'b':
+				return ('\b');
+      			case 'f':
+				return ('\f');
+      			case 'n':
+				return ('\n');
+      			case 'r':
+				return ('\r');
+      			case 't':
+				return ('\t');
+      			case 'v':
+				return ('\v');
+      			case '\\':
+				return ('\\');
+      			case '"':
+				return ('"');
+      			case '\'':
+				return ('\'');
+				//deal with octal constants by reading in 
+				//characters until we hit non-octal digit.
+				//build up the octal value in c2 and count
+				//# digits in i. permit only 3 octal digits.
+      			case '0':
+      			case '1':
+      			case '2':
+      			case '3':
+      			case '4':
+      			case '5':
+      			case '6':
+      			case '7':
+				for(i = c2 = 0; isdigit(c) && c < '8'; c = next()) 
+				{
+	  				if(++i > 3)
+	    					break;
+	  				c2 = c2 * 8 + (c - '0');
+				}
+				putback(c);		//put back the first non-octal char
+				return (c2);
+      			case 'x':
+				return (hexchar());
+      			default:
+				fatalc("unknown escape sequence", c);
+    		}
+  	}
+  	return c;			//just an ordinary old character!
+}
+
+// Scan and return an integer literal value from the input file.
 static int scanint(int c) 
 {
-  	int k, val = 0;
+  	int k, val = 0, radix = 10;
 
-  	//convert each character into an int value using our chrpos func..
-  	while((k = chrpos("0123456789", c)) >= 0) 
+  	// Assume the radix is 10, but if it starts with 0
+  	if(c == '0') 
   	{
-    		val = val * 10 + k;
+    		// and the next character is 'x', it's radix 16
+    		if((c = next()) == 'x') 
+    		{
+      			radix = 16;
+      			c = next();
+    		} 
+    		else
+      			// Otherwise, it's radix 8
+      			radix = 8;
+  	}
+  	// Convert each character into an int value
+  	while((k = chrpos("0123456789abcdef", tolower(c))) >= 0) 
+  	{
+    		if(k >= radix)
+      			fatalc("invalid digit in integer literal", c);
+    		
+    		val = val * radix + k;
     		c = next();
   	}
 
-  	//we hit a non-int char, put it back at its place..
+  	// We hit a non-integer character, put it back.
   	putback(c);
   	return val;
 }
 
-
-static int scanstr(char *buf)
+//scan in string literal from input file, and store it in buf[]. Return the length of the string. 
+static int scanstr(char *buf) 
 {
-	int i, c;
+  	int i, c;
 
-	for(i = 0; i < TEXTLEN-1; i++)
-	{
-		if((c = scanch()) == '"')
-		{
-			buf[i] = 0;
-			return i;
-		}
+  	//loop while we have enough buffer space
+  	for(i = 0; i < TEXTLEN - 1; i++) 
+  	{
+    		//get next char and append to buf return when we hit the ending double quote
+    		if((c = scanch()) == '"') 
+    		{
+      			buf[i] = 0;
+      			return (i);
+    		}
+    		buf[i] = (char)c;
+  	}
+  	//ran out of buf[] space
+  	fatal("String literal too long");
 
-		buf[i] = c;
-	}
-	fatal("string literal too long");
-	return 0;
+  	return 0;
 }
 
-//scan ident and store it in buf[].. and return length of ident..
+// Scan an identifier from the input file and store it in buf[]. Return the identifier's length
 static int scanident(int c, char *buf, int lim) 
 {
   	int i = 0;
 
-  	//only allow digits, alpha and underscores
+  	// Allow digits, alpha and underscores
   	while(isalpha(c) || isdigit(c) || '_' == c) 
-	{
-    		if(lim - 1 == i) 
-		{
+  	{
+    		// Error if we hit the identifier length limit,  else append to buf[] and get next character
+    		if (lim - 1 == i) 
+    		{
       			fatal("Identifier too long");
     		} 
-		else if (i < lim - 1) 
-		{
-      			buf[i++] = c;
+    		else if (i < lim - 1) 
+    		{
+      			buf[i++] = (char)c;
     		}
     		c = next();
   	}
-  	
-	//we hit a non-valid char, put it back, and terminate the buf[] with '\0'
+  	// We hit a non-valid character, put it back.
+  	// NUL-terminate the buf[] and return the length
   	putback(c);
   	buf[i] = '\0';
+  	
   	return i;
 }
 
-//match a keyword.. if  not matching erturn 0 else ret token..
+// Given a word from the input, return the matching keyword token number or 0 if it's not a keyword.
+// Switch on the first letter so that we don't have to waste time strcmp()ing against all the keywords.
 static int keyword(char *s) 
 {
-  	switch(*s) 
-	{
+  	switch (*s) 
+  	{
+    		case 'b':
+      			if(!strcmp(s, "break"))
+				return (T_BREAK);
+      			break;
     		case 'c':
+      			if (!strcmp(s, "case"))
+				return (T_CASE);
       			if (!strcmp(s, "char"))
-				return T_CHAR;
+				return (T_CHAR);
+     			if (!strcmp(s, "continue"))
+				return (T_CONTINUE);
+      			break;
+    		case 'd':
+      			if (!strcmp(s, "default"))
+				return (T_DEFAULT);
       			break;
     		case 'e':
-      			if(!strcmp(s, "else"))
-				return T_ELSE;
+      			if (!strcmp(s, "else"))
+				return (T_ELSE);
+      			if (!strcmp(s, "enum"))
+				return (T_ENUM);
+      			if (!strcmp(s, "extern"))
+				return (T_EXTERN);
       			break;
     		case 'f':
-      			if(!strcmp(s, "for"))
-				return T_FOR;
+      			if (!strcmp(s, "for"))
+				return (T_FOR);
       			break;
     		case 'i':
-      			if(!strcmp(s, "if"))
-				return T_IF;
+      			if (!strcmp(s, "if"))
+				return (T_IF);
       			if(!strcmp(s, "int"))
-				return T_INT;
+				return (T_INT);
       			break;
     		case 'l':
-      			if(!strcmp(s, "long"))
-				return T_LONG;
+      			if (!strcmp(s, "long"))
+				return (T_LONG);
       			break;
     		case 'r':
-      			if(!strcmp(s, "return"))
-				return T_RETURN;
+      			if (!strcmp(s, "return"))
+				return (T_RETURN);
       			break;
+    		case 's':
+      			if (!strcmp(s, "sizeof"))
+				return (T_SIZEOF);
+      			if (!strcmp(s, "static"))
+				return (T_STATIC);
+      			if (!strcmp(s, "struct"))
+				return (T_STRUCT);
+      			if (!strcmp(s, "switch"))
+				return (T_SWITCH);
+      			break;
+    		case 't':
+      			if (!strcmp(s, "typedef"))
+				return (T_TYPEDEF);
+      			break;
+    		case 'u':
+      			if (!strcmp(s, "union"))
+				return (T_UNION);
+      			break;
+   		case 'v':
+      			if (!strcmp(s, "void"))
+				return (T_VOID);
+     			break;
     		case 'w':
-      			if(!strcmp(s, "while"))
-				return T_WHILE;
-      			break;
-    		case 'v':
-      			if(!strcmp(s, "void"))
-				return T_VOID;
+      			if (!strcmp(s, "while"))
+				return (T_WHILE);
       			break;
   	}
   	return 0;
 }
 
-//a pointer to a rejected token
-static struct token *Rejtoken = NULL;
-
-//reject token that we just scanned
-void reject_token(struct token *t) 
+//list of token strings, for debugging purposes
+char *Tstring[] = 
 {
-  	if(Rejtoken != NULL)
-    		fatal("Can't reject token twice");
-  	
-	Rejtoken = t;
-}
+  "EOF", "=", "+=", "-=", "*=", "/=", "%=",
+  "?", "||", "&&", "|", "^", "&",
+  "==", "!=", ",", ">", "<=", ">=", "<<", ">>",
+  "+", "-", "*", "/", "%", "++", "--", "~", "!",
+  "void", "char", "int", "long",
+  "if", "else", "while", "for", "return",
+  "struct", "union", "enum", "typedef",
+  "extern", "break", "continue", "switch",
+  "case", "default", "sizeof", "static",
+  "intlit", "strlit", ";", "identifier",
+  "{", "}", "(", ")", "[", "]", ",", ".",
+  "->", ":"
+};
 
-//scan and return token ..
+//scan and return next token found in the input, return 1 if token valid, 0 if no tokens left..
 int scan(struct token *t) 
 {
   	int c, tokentype;
 
-  	//if we have any rejected token, return it
-  	if(Rejtoken != NULL) 
-	{
-    		t = Rejtoken;
-    		Rejtoken = NULL;
-    		return 1;
+  	//if we have lookahead token, return this token
+  	if(Peektoken.token != 0) 
+  	{
+    		t->token = Peektoken.token;
+    		t->tokstr = Peektoken.tokstr;
+    		t->intvalue = Peektoken.intvalue;
+    		Peektoken.token = 0;
+    		
+		return 1;
   	}
-  	
-	//skip whitespace
+  	//skip whitespace
   	c = skip();
 
-  	//determine the token based on the input character
+  	//determine token based on input character
   	switch(c) 
   	{
     		case EOF:
       			t->token = T_EOF;
-      			return 0;
+      			return (0);
     		case '+':
       			if((c = next()) == '+') 
       			{
-				t -> token = T_INC;
-      			}
+				t->token = T_INC;
+      			} 
+      			else if(c == '=') 
+      			{
+				t->token = T_ASPLUS;
+      			} 
       			else 
       			{
 				putback(c);
-				t -> token = T_PLUS;
+				t->token = T_PLUS;
       			}
       			break;
     		case '-':
       			if((c = next()) == '-') 
       			{
-				t -> token = T_DEC;
+				t->token = T_DEC;
+      			} 
+      			else if(c == '>') 
+      			{
+				t->token = T_ARROW;
+      			} 
+      			else if(c == '=') 
+      			{
+				t->token = T_ASMINUS;
+      			} 
+      			else if (isdigit(c)) 
+      			{	
+      				//negative int literal
+				t->intvalue = -scanint(c);
+				t->token = T_INTLIT;
       			} 
       			else 
       			{
 				putback(c);
-				t -> token = T_MINUS;
+				t->token = T_MINUS;
       			}
       			break;
-    		case '*':
-      			t->token = T_STAR;
+   		case '*':
+      			if ((c = next()) == '=') 
+      			{
+				t->token = T_ASSTAR;
+      			} 
+      			else 
+      			{
+				putback(c);
+				t->token = T_STAR;
+      			}
       			break;
     		case '/':
-      			t->token = T_SLASH;
+      			if((c = next()) == '=') 
+      			{
+				t->token = T_ASSLASH;
+      			} 
+      			else 
+      			{
+				putback(c);
+				t->token = T_SLASH;
+      			}
+      			break;
+    		case '%':
+      			if ((c = next()) == '=') 
+      			{
+				t->token = T_ASMOD;
+      			} 
+      			else 
+      			{
+				putback(c);
+				t->token = T_MOD;
+      			}
       			break;
     		case ';':
       			t->token = T_SEMI;
@@ -262,7 +455,7 @@ int scan(struct token *t)
       			break;
     		case '}':
       			t->token = T_RBRACE;
-      			break;	
+      			break;
     		case '(':
       			t->token = T_LPAREN;
       			break;
@@ -270,52 +463,61 @@ int scan(struct token *t)
       			t->token = T_RPAREN;
       			break;
     		case '[':
-      			t->token = T_LBRACKET;
+     	 		t->token = T_LBRACKET;
       			break;
     		case ']':
       			t->token = T_RBRACKET;
       			break;
-      		case '~':
-      			t -> token = T_INVERT;
+    		case '~':
+      			t->token = T_INVERT;
       			break;
     		case '^':
-      			t -> token = T_XOR;
+      			t->token = T_XOR;
       			break;
     		case ',':
-      			t -> token = T_COMMA;
+      			t->token = T_COMMA;
+      			break;
+    		case '.':
+      			t->token = T_DOT;
+      			break;
+    		case ':':
+      			t->token = T_COLON;
+      			break;
+    		case '?':
+      			t->token = T_QUESTION;
       			break;
     		case '=':
       			if((c = next()) == '=') 
       			{
 				t->token = T_EQ;
-      			}
-      			else
+      			} 
+      			else 
       			{
 				putback(c);
 				t->token = T_ASSIGN;
       			}
-      			break;	
+      			break;
     		case '!':
-      			if((c = next()) == '=') 
+      			if ((c = next()) == '=') 
       			{
 				t->token = T_NE;
-      			}
+      			} 
       			else 
       			{
 				putback(c);
-				t -> token = T_LOGNOT;
+				t->token = T_LOGNOT;
       			}
       			break;
     		case '<':
       			if((c = next()) == '=') 
       			{
 				t->token = T_LE;
-      			}
-      			else if(c == '<') 
+      			} 
+      			else if (c == '<') 
       			{
 				t->token = T_LSHIFT;
-      			}  
-      			else
+      			} 
+      			else 
       			{
 				putback(c);
 				t->token = T_LT;
@@ -324,77 +526,80 @@ int scan(struct token *t)
     		case '>':
       			if((c = next()) == '=') 
       			{
-				t -> token = T_GE;
+				t->token = T_GE;
       			} 
-      			else if(c == '>') 
+      			else if (c == '>') 
       			{
-				t -> token = T_RSHIFT;
+				t->token = T_RSHIFT;
       			} 
       			else 
       			{
 				putback(c);
-				t -> token = T_GT;
+				t->token = T_GT;
       			}
       			break;
     		case '&':
-      			if((c = next()) == '&') 
+      			if ((c = next()) == '&') 
       			{
-				t -> token = T_LOGAND;
+				t->token = T_LOGAND;
       			} 
       			else 
       			{
 				putback(c);
-				t -> token = T_AMPER;
+				t->token = T_AMPER;
       			}
       			break;
-      		case '|':
-      			if((c = next()) == '|') 
+    		case '|':
+      			if ((c = next()) == '|') 
       			{
-				t -> token = T_LOGOR;
+				t->token = T_LOGOR;
       			} 
       			else 
       			{
 				putback(c);
-				t -> token = T_OR;
-      			}
+				t->token = T_OR;
+     			}
       			break;
-		case '\'':
-			t -> intvalue = scanch();
-			t -> token = T_INTLIT;
-			if(next() != '\'')
+    		case '\'':
+      			// If it's a quote, scan in the literal character value and the trailing quote
+      			t->intvalue = scanch();
+      			t->token = T_INTLIT;
+      			if(next() != '\'')
 				fatal("Expected '\\'' at end of char literal");
-			break;
-		case '"':
-			scanstr(Text);
-			t -> token = T_STRLIT;
-			break;
+      			break;
+    		case '"':
+      			//scan in a literal string
+      			scanstr(Text);
+      			t -> token = T_STRLIT;
+      			break;
     		default:
-      			//if it's a digit, scan int lit value in
+      			// If it's a digit, scan the literal integer value in
       			if(isdigit(c)) 
       			{
-				t -> intvalue = scanint(c);
-				t -> token = T_INTLIT;
+				t->intvalue = scanint(c);
+				t->token = T_INTLIT;
 				break;
       			} 
       			else if (isalpha(c) || '_' == c) 
       			{
-				//read that word or ident
+				//read in keyword or identifier
 				scanident(c, Text, TEXTLEN);
 
-				//if it's a recognised keyword, then ret..
-				if((tokentype = keyword(Text)) != 0) 
+				//if it's recognised keyword, return that token
+				if ((tokentype = keyword(Text)) != 0) 
 				{
-	  				t -> token = tokentype;
+	  				t->token = tokentype;
 	  				break;
 				}
-				//not a recognised keyword, so it must be an identifier
-				t -> token = T_IDENT;
+				//not recognised keyword, so it must be an identifier
+				t->token = T_IDENT;
 				break;
       			}
-      			//the character isn't part of any recognised token, error
+     			// The character isn't part of any recognised token, error
       			fatalc("Unrecognised character", c);
-  		}	
+  	}
 
-  	//return with success
+  	//we found token
+  	t -> tokstr = Tstring[t->token];
   	return (1);
-}
+}	

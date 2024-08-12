@@ -1,8 +1,10 @@
+void printf(int a,int b);
+
 void main()
 {
-  int fred;
-  int jim;
-  fred= 5;
-  jim= 12;
-  printint(fred + jim);
+  int a;
+  int b;
+  a = 5;
+  b = 12;
+  printf(b + a);
 }

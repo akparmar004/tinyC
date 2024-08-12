@@ -3,7 +3,7 @@ int printf(char *fmt);
 int main(int argc, char **argv) {
   int i;
   char *argument;
-  printf("Hello world\n");
+  printf("Hello, arjun!!\n");
 
   for (i=0; i < argc; i++) {
     argument= *argv; argv= argv + 1;
