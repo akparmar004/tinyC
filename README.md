@@ -36,8 +36,10 @@ To execute above code :
 jarvis file.c
 ```
 Output : 
-```
+```terminal
+eren@the-great-ak:./a.out
 20
+eren@the-great-ak:
 ```
 Now let's execute using option : 
 ```
