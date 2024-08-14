@@ -33,18 +33,20 @@ void main()
 ```
 To execute above code :
 ```
-jarvis file.c
+eren@the-great-ak: jarvis file.c
 ```
 Output : 
-```terminal
+```shell
 eren@the-great-ak: ls
 file.c a.out
-eren@the-great-ak: a.out
+eren@the-great-ak: ./a.out
 20
 ```
 Now let's execute using option : 
-```
-jarvis -S file.c
+```shell
+eren@the-great-ak: jarvis -S file.c
+eren@the-great-ak: ls
+file.c a.out file.s
 ```
 Generated assembly file using -S option which is file.s below :
 ```assembly
