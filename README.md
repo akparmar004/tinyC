@@ -43,6 +43,7 @@ Now let's execute using option :
 ```
 jarvis -S file.c
 ```
+Generated assembly file using -S option which is file.s below :
 ```assembly
 //file.s
 # freeing all registers
