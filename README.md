@@ -20,7 +20,7 @@ make jarvis
 ```
 ### Example : 
 simple C program :
-```
+```c
 //file.c
 #include<stdio.h>
 void main()
