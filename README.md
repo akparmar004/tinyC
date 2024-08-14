@@ -46,7 +46,7 @@ Now let's execute using option :
 ```shell
 eren@the-great-ak: jarvis -S file.c
 eren@the-great-ak: ls
-file.c a.out file.s
+a.out file.c file.s
 ```
 Generated assembly file using -S option which is file.s below :
 ```assembly
