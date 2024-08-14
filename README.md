@@ -19,7 +19,7 @@ make jarvis
 -o outfile, produce the outfile executable file
 ```
 ### Example : 
-simple C program :
+Simple C program :
 ```c
 //file.c
 #include<stdio.h>
@@ -43,7 +43,7 @@ Now let's execute using option :
 ```
 jarvis -S file.c
 ```
-```
+```assembly
 //file.s
 # freeing all registers
 	.text
