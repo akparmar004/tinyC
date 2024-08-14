@@ -1,15 +1,13 @@
-#include "defs.h"
+#include "../../include/defs.h"
 #define extern_
-#include "data.h"
+#include "../../include/data.h"
 #undef extern_
-#include "decl.h"
+#include "../../include/decl.h"
 #include <errno.h>
 #include <unistd.h>
 
-//compiler setup and top-level execution
+//compiler main file
 
-//given string with '.' and at least 1-character suffix after '.', change suffix to be given character.
-//return new string or NULL if original string could not be modified
 char *alter_suffix(char *str, char suffix) 
 {
   	char *posn;
@@ -35,12 +33,10 @@ char *alter_suffix(char *str, char suffix)
   	return newstr;
 }
 
-//given input filename, compile that file down to assembly code, return new file's name
 static char *do_compile(char *filename) 
 {
   	char cmd[TEXTLEN];
 
-  	//change input file's suffix to .s
   	Outfilename = alter_suffix(filename, 's');
   	if(Outfilename == NULL) 
   	{
@@ -48,11 +44,8 @@ static char *do_compile(char *filename)
     		exit(1);
   	}
 
-  	//generate pre-processor command
-	//for ex. cpp -nostdinc -isystem /tmp/include //(random)sum.c
   	snprintf(cmd, TEXTLEN, "%s %s %s", CPPCMD, INCDIR, filename);
   	
-	//open up pre-processor pipe
   	if((Infile = popen(cmd, "r")) == NULL) 
   	{
     		fprintf(stderr, "Unable to open %s: %s\n", filename, strerror(errno));
@@ -60,27 +53,25 @@ static char *do_compile(char *filename)
   	}
   	Infilename = filename;
 
-  	//create the output file
   	if((Outfile = fopen(Outfilename, "w")) == NULL) 
   	{
     		fprintf(stderr, "Unable to create %s: %s\n", Outfilename, strerror(errno));
     		exit(1);
   	}
 
-  	Line = 1;			//reset the scanner
+  	Line = 1;			
   	Linestart = 1;
   	Putback = '\n';
-  	clear_symtable();		//clear the symbol table
+  	clear_symtable();		
   	if (O_verbose)
     		printf("compiling %s\n", filename);
-  	scan(&Token);			//get first token from input
-  	Peektoken.token = 0;		//and set there is no lookahead token
-  	genpreamble();			//output preamble
-  	global_declarations();		//parse global declarations
-  	genpostamble();			//output postamble
-  	fclose(Outfile);		//close output file
+  	scan(&Token);			
+  	Peektoken.token = 0;		
+  	genpreamble();			
+  	global_declarations();		
+  	genpostamble();			
+  	fclose(Outfile);		
 
-  	//dump the symbol table if requested
   	if(O_dumpsym) 
   	{
     		printf("Symbols for %s\n", filename);
@@ -88,11 +79,10 @@ static char *do_compile(char *filename)
     		fprintf(stdout, "\n\n");
   	}
 
-  	freestaticsyms();		//Free any static symbols in the file
+  	freestaticsyms();		//Free any static symbols in file
   	return Outfilename;
 }
 
-//given an input filename, assemble that file down to object code. Return the object filename
 char *do_assemble(char *filename) 
 {
   	char cmd[TEXTLEN];
@@ -104,8 +94,8 @@ char *do_assemble(char *filename)
     		fprintf(stderr, "Error: %s has no suffix, try .s on the end\n", filename);
     		exit(1);
   	}
-  	// Build the assembly command and run it
-  	snprintf(cmd, TEXTLEN, "%s %s %s", ASCMD, outfilename, filename);
+  	
+	snprintf(cmd, TEXTLEN, "%s %s %s", ASCMD, outfilename, filename);
   	if(O_verbose)
     		printf("%s\n", cmd);
   	err = system(cmd);
@@ -118,20 +108,17 @@ char *do_assemble(char *filename)
   	return outfilename;
 }
 
-// Given a list of object files and an output filename, link all of the object filenames together.
 void do_link(char *outfilename, char **objlist) 
 {
   	int cnt, size = TEXTLEN;
   	char cmd[TEXTLEN], *cptr;
   	int err;
 
-  	// Start with the linker command and the output file
   	cptr = cmd;
   	cnt = snprintf(cptr, size, "%s %s ", LDCMD, outfilename);
   	cptr += cnt;
   	size -= cnt;
 
-  	// Now append each object file
   	while (*objlist != NULL) 
   	{
     		cnt = snprintf(cptr, size, "%s ", *objlist);
@@ -151,7 +138,6 @@ void do_link(char *outfilename, char **objlist)
   	}
 }
 
-//print out a usage if started incorrectly
 static void usage(char *prog) 
 {
   	fprintf(stderr, "Usage: %s [-vcSTM] [-o outfile] file [file ...]\n", prog);
@@ -164,12 +150,7 @@ static void usage(char *prog)
   	exit(1);
 }
 
-//main program: check arguments and print a usage if we don't have an argument,
-//open up the input file and call scanfile() to scan the tokens in it.
-enum 
-{ 
-	MAXOBJ = 100 
-};
+enum { MAXOBJ = 100 };
 
 int main(int argc, char **argv) 
 {
@@ -178,7 +159,6 @@ int main(int argc, char **argv)
   	char *objlist[MAXOBJ];
   	int i, j, objcnt = 0;
 
-  	//initialising our variables
   	O_dumpAST = 0;
   	O_dumpsym = 0;
   	O_keepasm = 0;
@@ -189,17 +169,15 @@ int main(int argc, char **argv)
   	//scan command-line options
   	for(i = 1; i < argc; i++) 
   	{
-    		//no leading '-', stop scanning for options
     		if (*argv[i] != '-')
       			break;
 
-    		//for each option in this argument
     		for(j = 1; (*argv[i] == '-') && argv[i][j]; j++) 
     		{
       			switch(argv[i][j]) 
       			{
 				case 'o':
-	  				outfilename = argv[++i];	//save & skip to next argument
+	  				outfilename = argv[++i];	
 	  				break;
 				case 'T':
 	  				O_dumpAST = 1;
@@ -226,39 +204,35 @@ int main(int argc, char **argv)
     		}
   	}
 
-  	//ensure we have at lease one input file argument
   	if(i >= argc)
     		usage(argv[0]);
 
-  	//work on each input file in turn
   	while(i < argc) 
   	{
-    		asmfile = do_compile(argv[i]);	//compile the source file
+    		asmfile = do_compile(argv[i]);	
 
     		if (O_dolink || O_assemble) 
     		{
-      			objfile = do_assemble(asmfile);	// Assemble it to object forma
+      			objfile = do_assemble(asmfile);	
       			if(objcnt == (MAXOBJ - 2)) 
       			{
 				fprintf(stderr, "Too many object files for the compiler to handle\n");
 				exit(1);
       			}
-      			objlist[objcnt++] = objfile;	// Add the object file's name
-      			objlist[objcnt] = NULL;	// to the list of object files
+      			objlist[objcnt++] = objfile;	
+      			objlist[objcnt] = NULL;	
     		}
 
-    		if (!O_keepasm)		// Remove the assembly file if
-      			unlink(asmfile);		// we don't need to keep it
+    		if (!O_keepasm)		
+      			unlink(asmfile);		
     		i++;
   	}	
 
- 	// Now link all the object files together
   	if (O_dolink) 
   	{
     		do_link(outfilename, objlist);
-
-    		// If we don't need to keep the object files, then remove them
-    		if(!O_assemble) 
+    		
+		if(!O_assemble) 
     		{
       			for(i = 0; objlist[i] != NULL; i++)
 				unlink(objlist[i]);

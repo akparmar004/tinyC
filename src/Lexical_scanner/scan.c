@@ -1,10 +1,9 @@
-#include "defs.h"
-#include "data.h"
-#include "decl.h"
+#include "../../include/defs.h"
+#include "../../include/data.h"
+#include "../../include/decl.h"
 
-// Lexical Scaner
+//lexical Scaner
 
-// Return the position of character c in string s, or -1 if c not found
 static int chrpos(char *s, int c) 
 {
   	int i;
@@ -16,13 +15,12 @@ static int chrpos(char *s, int c)
   	return (-1);
 }
 
-//get next character from input file.
 static int next(void) 
 {
   	int c, l;
 
   	if(Putback) 
-  	{				//use the character put
+  	{				
     		c = Putback;		//back if there is one
     		Putback = 0;
     		
@@ -32,48 +30,45 @@ static int next(void)
   	c = fgetc(Infile);		//read from input file
 
   	while(Linestart && c == '#') 
-  	{				//we've hit a pre-processor statement
-    		Linestart = 0;		//no longer at the start of the line
-    		scan(&Token);		//get the line number into l
+  	{				
+    		Linestart = 0;		
+    		scan(&Token);		
     		if (Token.token != T_INTLIT)
       			fatals("Expecting pre-processor line number, got:", Text);
     		l = Token.intvalue;
 
-    		scan(&Token);		//get the filename in Text
+    		scan(&Token);		
     		if (Token.token != T_STRLIT)
       			fatals("Expecting pre-processor file name, got:", Text);
 
     		if (Text[0] != '<') 
-    		{						//if this is a real filename
-      			if (strcmp(Text, Infilename))		//and not the one we have now
-				Infilename = strdup(Text);	//save it. Then update the line num
+    		{				
+      			if (strcmp(Text, Infilename))		
+				Infilename = strdup(Text);	
       			
       			Line = l;
     		}
 
-    		while((c = fgetc(Infile)) != '\n');	//skip to end of line
+    		while((c = fgetc(Infile)) != '\n');	
     			
-		c = fgetc(Infile);			//and get the next character
-    		Linestart = 1;				//now back at the start of the line
+		c = fgetc(Infile);			
+    		Linestart = 1;				
   	}
 
-  	Linestart = 0;		//no longer at start of line
+  	Linestart = 0;		
   	if('\n' == c) 
   	{
-    		Line++;			//increment line count
-    		Linestart = 1;		//now back at start of line
+    		Line++;			
+    		Linestart = 1;		
   	}
   	return c;
 }
 
-// Put back an unwanted character
 static void putback(int c) 
 {
   	Putback = c;
 }
 
-// Skip past input that we don't need to deal with,  i.e. whitespace, newlines. Return the first
-// character we do need to deal with.
 static int skip(void) 
 {
   	int c;
@@ -86,24 +81,18 @@ static int skip(void)
   	return c;
 }
 
-// Read in a hexadecimal constant from the input
 static int hexchar(void) 
 {
   	int c, h, n = 0, f = 0;
 
-  	// Loop getting characters
   	while(isxdigit(c = next())) 
   	{
-    		// Convert from char to int value
     		h = chrpos("0123456789abcdef", tolower(c));
     		
-    		// Add to running hex value
     		n = n * 16 + h;
     		f = 1;
   	}
-  	// We hit a non-hex character, put it back
   	putback(c);
-  	// Flag tells us we never saw any hex characters
   	if (!f)
     		fatal("missing digits after '\\x'");
   	
@@ -113,12 +102,10 @@ static int hexchar(void)
   	return n;
 }
 
-// Return the next character from a character or string literal
 static int scanch(void) 
 {
   	int i, c, c2;
 
-  	//get the next input character and interpret metacharacters that start with a backslash
   	c = next();
   	if(c == '\\') 
   	{
@@ -144,10 +131,6 @@ static int scanch(void)
 				return ('"');
       			case '\'':
 				return ('\'');
-				//deal with octal constants by reading in 
-				//characters until we hit non-octal digit.
-				//build up the octal value in c2 and count
-				//# digits in i. permit only 3 octal digits.
       			case '0':
       			case '1':
       			case '2':
@@ -162,7 +145,7 @@ static int scanch(void)
 	    					break;
 	  				c2 = c2 * 8 + (c - '0');
 				}
-				putback(c);		//put back the first non-octal char
+				putback(c);		
 				return (c2);
       			case 'x':
 				return (hexchar());
@@ -170,28 +153,23 @@ static int scanch(void)
 				fatalc("unknown escape sequence", c);
     		}
   	}
-  	return c;			//just an ordinary old character!
+  	return c;			
 }
 
-// Scan and return an integer literal value from the input file.
 static int scanint(int c) 
 {
   	int k, val = 0, radix = 10;
 
-  	// Assume the radix is 10, but if it starts with 0
   	if(c == '0') 
   	{
-    		// and the next character is 'x', it's radix 16
     		if((c = next()) == 'x') 
     		{
       			radix = 16;
       			c = next();
     		} 
     		else
-      			// Otherwise, it's radix 8
       			radix = 8;
   	}
-  	// Convert each character into an int value
   	while((k = chrpos("0123456789abcdef", tolower(c))) >= 0) 
   	{
     		if(k >= radix)
@@ -200,21 +178,17 @@ static int scanint(int c)
     		val = val * radix + k;
     		c = next();
   	}
-
-  	// We hit a non-integer character, put it back.
-  	putback(c);
+  	
+	putback(c);
   	return val;
 }
 
-//scan in string literal from input file, and store it in buf[]. Return the length of the string. 
 static int scanstr(char *buf) 
 {
   	int i, c;
 
-  	//loop while we have enough buffer space
   	for(i = 0; i < TEXTLEN - 1; i++) 
   	{
-    		//get next char and append to buf return when we hit the ending double quote
     		if((c = scanch()) == '"') 
     		{
       			buf[i] = 0;
@@ -222,21 +196,17 @@ static int scanstr(char *buf)
     		}
     		buf[i] = (char)c;
   	}
-  	//ran out of buf[] space
   	fatal("String literal too long");
 
   	return 0;
 }
 
-// Scan an identifier from the input file and store it in buf[]. Return the identifier's length
 static int scanident(int c, char *buf, int lim) 
 {
   	int i = 0;
 
-  	// Allow digits, alpha and underscores
   	while(isalpha(c) || isdigit(c) || '_' == c) 
   	{
-    		// Error if we hit the identifier length limit,  else append to buf[] and get next character
     		if (lim - 1 == i) 
     		{
       			fatal("Identifier too long");
@@ -247,16 +217,12 @@ static int scanident(int c, char *buf, int lim)
     		}
     		c = next();
   	}
-  	// We hit a non-valid character, put it back.
-  	// NUL-terminate the buf[] and return the length
   	putback(c);
   	buf[i] = '\0';
   	
   	return i;
 }
 
-// Given a word from the input, return the matching keyword token number or 0 if it's not a keyword.
-// Switch on the first letter so that we don't have to waste time strcmp()ing against all the keywords.
 static int keyword(char *s) 
 {
   	switch (*s) 
@@ -333,7 +299,6 @@ static int keyword(char *s)
   	return 0;
 }
 
-//list of token strings, for debugging purposes
 char *Tstring[] = 
 {
   "EOF", "=", "+=", "-=", "*=", "/=", "%=",
@@ -350,12 +315,10 @@ char *Tstring[] =
   "->", ":"
 };
 
-//scan and return next token found in the input, return 1 if token valid, 0 if no tokens left..
 int scan(struct token *t) 
 {
   	int c, tokentype;
 
-  	//if we have lookahead token, return this token
   	if(Peektoken.token != 0) 
   	{
     		t->token = Peektoken.token;
@@ -365,10 +328,8 @@ int scan(struct token *t)
     		
 		return 1;
   	}
-  	//skip whitespace
   	c = skip();
 
-  	//determine token based on input character
   	switch(c) 
   	{
     		case EOF:
@@ -561,19 +522,16 @@ int scan(struct token *t)
      			}
       			break;
     		case '\'':
-      			// If it's a quote, scan in the literal character value and the trailing quote
       			t->intvalue = scanch();
       			t->token = T_INTLIT;
       			if(next() != '\'')
 				fatal("Expected '\\'' at end of char literal");
       			break;
     		case '"':
-      			//scan in a literal string
       			scanstr(Text);
       			t -> token = T_STRLIT;
       			break;
     		default:
-      			// If it's a digit, scan the literal integer value in
       			if(isdigit(c)) 
       			{
 				t->intvalue = scanint(c);
@@ -582,24 +540,19 @@ int scan(struct token *t)
       			} 
       			else if (isalpha(c) || '_' == c) 
       			{
-				//read in keyword or identifier
 				scanident(c, Text, TEXTLEN);
 
-				//if it's recognised keyword, return that token
 				if ((tokentype = keyword(Text)) != 0) 
 				{
 	  				t->token = tokentype;
 	  				break;
 				}
-				//not recognised keyword, so it must be an identifier
 				t->token = T_IDENT;
 				break;
       			}
-     			// The character isn't part of any recognised token, error
       			fatalc("Unrecognised character", c);
   	}
 
-  	//we found token
   	t -> tokstr = Tstring[t->token];
   	return (1);
 }	

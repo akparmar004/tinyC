@@ -1,20 +1,17 @@
-#include "defs.h"
-#include "data.h"
-#include "decl.h"
+#include "../../include/defs.h"
+#include "../../include/data.h"
+#include "../../include/decl.h"
 
-// AST tree functions
+//AST tree functions
 
-//build and return a generic AST node
 ast *mkastnode(int op, int type, symt *ctype, ast *left, ast *mid, ast *right, symt *sym, int intvalue)
 {
         ast *n;
 
-        // Malloc a new ASTnode
         n = (ast*)malloc(sizeof(ast));
         if (n == NULL)
         fatal("Unable to malloc in mkastnode()");
 
-        // Copy in the field values and return it
   	n->op = op;
   	n->type = type;
   	n->ctype = ctype;
@@ -27,26 +24,22 @@ ast *mkastnode(int op, int type, symt *ctype, ast *left, ast *mid, ast *right, s
   	return n;
 }
 
-// Make an AST leaf node
 ast *mkastleaf(int op, int type, symt *ctype, symt *sym, int intvalue)
 {
   	return mkastnode(op, type, ctype, NULL, NULL, NULL, sym, intvalue);
 }
 
-// Make a unary AST node: only one child
 ast *mkastunary(int op, int type, symt *ctype, ast *left, symt *sym, int intvalue)
 {
   	return mkastnode(op, type, ctype, left, NULL, NULL, sym, intvalue);
 }
 
-// Generate and return a new label number just for AST dumping purposes
 static int dumpid = 1;
 static int gendumplabel(void)
 {
   	return (dumpid++);
 }
 
-// Given an AST tree, print it out and follow the traversal of the tree that genAST() follows
 void dumpAST(ast *n, int label, int level)
 {
   	int Lfalse, Lstart, Lend;
@@ -81,12 +74,9 @@ void dumpAST(ast *n, int label, int level)
     			dumpAST(n->right, NOLABEL, level + 2);
     			return;
  	}
-
-  	// Reset level to -2 for A_GLUE
   	if (n->op == A_GLUE)
     		level = -2;
 
-  	// General AST node handling
   	if(n->left)
     		dumpAST(n->left, NOLABEL, level + 2);
   	if(n->right)

@@ -1,22 +1,19 @@
-#include "defs.h"
-#include "data.h"
-#include "decl.h"
+#include "../../include/defs.h"
+#include "../../include/data.h"
+#include "../../include/decl.h"
 
 //types and type handling
 
-//return true if type is int type of any size, false otherwise
 int inttype(int type) 
 {
   	return (((type & 0xf) == 0) && (type >= P_CHAR && type <= P_LONG));
 }
 
-//return true if type is of pointer type
 int ptrtype(int type) 
 {
   	return ((type & 0xf) != 0);
 }
 
-//given primitive type, return the type which is a pointer to it
 int pointer_to(int type) 
 {
   	if ((type & 0xf) == 0xf)
@@ -25,7 +22,6 @@ int pointer_to(int type)
   	return (type + 1);
 }
 
-// Given a primitive pointer type, return the type which it points to
 int value_at(int type) 
 {
   	if ((type & 0xf) == 0x0)
@@ -34,7 +30,6 @@ int value_at(int type)
   	return (type - 1);
 }
 
-// Given a type and a composite type pointer, return the size of this type in bytes
 int typesize(int type, symt *ctype)
 {
   	if (type == P_STRUCT || type == P_UNION)
@@ -43,12 +38,6 @@ int typesize(int type, symt *ctype)
   	return genprimsize(type);
 }
 
-// Given an AST tree and a type which we want it to become,
-// possibly modify the tree by widening or scaling so that
-// it is compatible with this type. Return the original tree
-// if no changes occurred, a modified tree, or NULL if the
-// tree is not compatible with the given type.
-// If this will be part of a binary operation, the AST op is not zero.
 ast *modify_type(ast *tree, int rtype, symt *rctype, int op) 
 {
   	int ltype;
@@ -56,7 +45,6 @@ ast *modify_type(ast *tree, int rtype, symt *rctype, int op)
 
   	ltype = tree->type;
 
-  	// For A_LOGOR and A_LOGAND, both types have to be int or pointer types
   	if(op==A_LOGOR || op==A_LOGAND) 
   	{
     		if (!inttype(ltype) && !ptrtype(ltype))
@@ -68,49 +56,37 @@ ast *modify_type(ast *tree, int rtype, symt *rctype, int op)
     		return tree;
   	}
 
-  	// XXX No idea on these yet
   	if(ltype == P_STRUCT || ltype == P_UNION)
     		fatal("Don't know how to do this yet");
   	if(rtype == P_STRUCT || rtype == P_UNION)
     		fatal("Don't know how to do this yet");
 
-  	// Compare scalar int types
   	if(inttype(ltype) && inttype(rtype)) 
   	{
 
-    		// Both types same, nothing to do
     		if(ltype == rtype)
       			return tree;
 
-    		// Get the sizes for each type
     		lsize = typesize(ltype, NULL);
     		rsize = typesize(rtype, NULL);
 
-    		// Tree's size is too big
     		if(lsize > rsize)
       			return NULL;
 
-    		// Widen to the right
     		if(rsize > lsize)
       			return (mkastunary(A_WIDEN, rtype, NULL, tree, NULL, 0));
   	}
-  	// For pointers
   	if(ptrtype(ltype) && ptrtype(rtype)) 
   	{
-    		// We can compare them
     		if(op >= A_EQ && op <= A_GE)
       			return tree;
 
-    		// A comparison of the same type for a non-binary operation is OK,
-    		// or when the left tree is of  `void *` type.
     		if(op == 0 && (ltype == rtype || ltype == pointer_to(P_VOID)))
       			return tree;
   	}
-  	// We can scale only on add and subtract operations
   	if(op == A_ADD || op == A_SUBTRACT || op == A_ASPLUS || op == A_ASMINUS) 
   	{
 
-    		// Left is int type, right is pointer type and the size  of the original type is >1: scale the left
     		if (inttype(ltype) && ptrtype(rtype)) 
     		{
       			rsize = genprimsize(value_at(rtype));
@@ -120,6 +96,5 @@ ast *modify_type(ast *tree, int rtype, symt *rctype, int op)
 				return tree;		// Size 1, no need to scale
     		}
   	}
-  	// If we get here, the types are not compatible
   	return NULL;
 }

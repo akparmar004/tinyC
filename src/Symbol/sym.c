@@ -1,18 +1,15 @@
-#include "defs.h"
-#include "data.h"
-#include "decl.h"
+#include "../../include/defs.h"
+#include "../../include/data.h"
+#include "../../include/decl.h"
 
 //symbol table functions
 
 
-//append node to singly-linked list pointed to by head or tail
 void appendsym(symt **head, symt **tail, symt *node) 
 {
-  	//check for valid pointers
   	if(head == NULL || tail == NULL || node == NULL)
     		fatal("Either head, tail or node is NULL in appendsym");
 
-  	//append to the list
   	if(*tail) 
   	{
     		(*tail)->next = node;
@@ -24,24 +21,14 @@ void appendsym(symt **head, symt **tail, symt *node)
   	node->next = NULL;
 }
 
-//create symbol node to be added to symbol table list.
-//set up node's: 
-// + type: char, int etc.
-// + ctype: composite type pointer for struct/union
-// + structural type: var, function, array etc.
-// + size: number of elements, or endlabel: end label for a function
-// + posn: Position information for local symbols
-// Return a pointer to the new node
 symt *newsym(char *name, int type, symt *ctype, int stype, int class, int nelems, int posn) 
 {
 
-  	// Get a new node
   	symt *node = (symt *) malloc(sizeof(symt));
   	
   	if(node == NULL)
     		fatal("Unable to malloc a symbol table node in newsym");
 
-  	// Fill in the values
   	if(name == NULL)
     		node->name = NULL;
   	else
@@ -53,8 +40,6 @@ symt *newsym(char *name, int type, symt *ctype, int stype, int class, int nelems
   	node->class = class;
   	node->nelems = nelems;
 
-  	// For pointers and integer types, set the size of the symbol. structs and union declarations
-  	// manually set this up themselves.
   	if(ptrtype(type) || inttype(type))
     		node->size = nelems * typesize(type, ctype);
 
@@ -66,11 +51,9 @@ symt *newsym(char *name, int type, symt *ctype, int stype, int class, int nelems
   	return node;
 }
 
-// Add a symbol to the global symbol list
 symt *addglob(char *name, int type, symt *ctype, int stype, int class, int nelems, int posn) 
 {
   	symt *sym = newsym(name, type, ctype, stype, class, nelems, posn);
-  	// For structs and unions, copy the size from the type node
   	if(type == P_STRUCT || type == P_UNION)
     		sym->size = ctype->size;
   	
@@ -79,12 +62,10 @@ symt *addglob(char *name, int type, symt *ctype, int stype, int class, int nelem
   	return sym;
 }
 
-// Add a symbol to the local symbol list
 symt *addlocl(char *name, int type, symt *ctype, int stype, int nelems) 
 {
   	symt *sym = newsym(name, type, ctype, stype, C_LOCAL, nelems, 0);
   	
-  	// For structs and unions, copy the size from the type node
   	if(type == P_STRUCT || type == P_UNION)
     		sym->size = ctype->size;
   	
@@ -92,7 +73,6 @@ symt *addlocl(char *name, int type, symt *ctype, int stype, int nelems)
   	return sym;
 }
 
-// Add a symbol to the parameter list
 symt *addparm(char *name, int type, symt *ctype, int stype) 
 {
   	symt *sym = newsym(name, type, ctype, stype, C_PARAM, 1, 0);
@@ -101,12 +81,10 @@ symt *addparm(char *name, int type, symt *ctype, int stype)
   	return sym;
 }
 
-// Add a symbol to the temporary member list
 symt *addmemb(char *name, int type, symt *ctype, int stype, int nelems) 
 {
   	symt *sym = newsym(name, type, ctype, stype, C_MEMBER, nelems, 0);
   	
-  	// For structs and unions, copy the size from the type node
   	if(type == P_STRUCT || type == P_UNION)
    		sym->size = ctype->size;
   	
@@ -115,7 +93,6 @@ symt *addmemb(char *name, int type, symt *ctype, int stype, int nelems)
   	return sym;
 }
 
-// Add a struct to the struct list
 symt *addstruct(char *name) 
 {
   	symt *sym = newsym(name, P_STRUCT, NULL, 0, C_STRUCT, 0, 0);
@@ -124,7 +101,6 @@ symt *addstruct(char *name)
   	return sym;
 }
 
-// Add a struct to the union list
 symt *addunion(char *name) 
 {
   	symt *sym = newsym(name, P_UNION, NULL, 0, C_UNION, 0, 0);
@@ -133,8 +109,6 @@ symt *addunion(char *name)
   	return sym;
 }
 
-//add an enum type or value to enum list, class is C_ENUMTYPE or C_ENUMVAL.
-//use posn to store int value.
 symt *addenum(char *name, int class, int value) 
 {
   	symt *sym = newsym(name, P_INT, NULL, 0, class, 0, value);
@@ -143,7 +117,6 @@ symt *addenum(char *name, int class, int value)
   	return sym;
 }
 
-//add typedef to typedef list
 symt *addtypedef(char *name, int type, symt *ctype) 
 {
   	symt *sym = newsym(name, type, ctype, 0, C_TYPEDEF, 0, 0);
@@ -152,8 +125,6 @@ symt *addtypedef(char *name, int type, symt *ctype)
   	return sym;
 }
 
-//search for symbol in specific list, return pointer to found node or NULL if not found.
-//if class is not zero, also match on the given class
 static symt *findsyminlist(char *s, symt *list, int class) 
 {
   	for(; list != NULL; list = list->next)
@@ -164,18 +135,15 @@ static symt *findsyminlist(char *s, symt *list, int class)
   	return NULL;
 }
 
-// Determine if symbol s is in global symbol table, Return pointer to found node or NULL if not found.
 symt *findglob(char *s) 
 {
   	return findsyminlist(s, Globhead, 0);
 }
 
-// Determine if the symbol s is in local symbol table, Return pointer to the found node or NULL if not found.
 symt *findlocl(char *s) 
 {
   	symt *node;
 
-  	// Look for a parameter if we are in a function's body
   	if(Functionid) 
   	{
     		node = findsyminlist(s, Functionid->member, 0);
@@ -185,19 +153,16 @@ symt *findlocl(char *s)
   	return findsyminlist(s, Loclhead, 0);
 }
 
-// Determine if the symbol s is in the symbol table, Return pointer to the found node or NULL if not found.
 symt *findsymbol(char *s) 
 {
   	symt *node;
 
-  	// Look for a parameter if we are in a function's body
   	if(Functionid) 
   	{
     		node = findsyminlist(s, Functionid->member, 0);
     		if(node)
       			return node;
   	}
-  	// Otherwise, try the local and global symbol lists
   	node = findsyminlist(s, Loclhead, 0);
   	if(node)
     		return node;
@@ -205,43 +170,36 @@ symt *findsymbol(char *s)
   	return findsyminlist(s, Globhead, 0);
 }
 
-// Find a member in the member list Return a pointer to the found node or NULL if not found.
 symt *findmember(char *s)
 {
   	return findsyminlist(s, Membhead, 0);
 }
 
-// Find a struct in the struct list Return a pointer to the found node or NULL if not found.
 symt *findstruct(char *s) 
 {
   	return findsyminlist(s, Structhead, 0);
 }
 
-// Find a struct in the union list Return a pointer to the found node or NULL if not found.
 symt *findunion(char *s) 
 {
   	return findsyminlist(s, Unionhead, 0);
 }
 
-// Find an enum type in the enum list Return a pointer to the found node or NULL if not found.
 symt *findenumtype(char *s) 
 {
   	return (findsyminlist(s, Enumhead, C_ENUMTYPE));
 }
 
-// Find an enum value in the enum list Return a pointer to the found node or NULL if not found.
 symt *findenumval(char *s) 
 {
   	return (findsyminlist(s, Enumhead, C_ENUMVAL));
 }
 
-//find type in the tyedef list Return a pointer to the found node or NULL if not found.
 symt *findtypedef(char *s) 
 {
   	return (findsyminlist(s, Typehead, 0));
 }
 
-//reset contents of the symbol table
 void clear_symtable(void) 
 {
   	Globhead = Globtail = NULL;
@@ -254,7 +212,6 @@ void clear_symtable(void)
   	Typehead = Typetail = NULL;
 }
 
-// Clear all the entries in the local symbol table
 void freeloclsyms(void) 
 {
   	Loclhead = Locltail = NULL;
@@ -262,26 +219,20 @@ void freeloclsyms(void)
   	Functionid = NULL;
 }
 
-// Remove all static symbols from the global symbol table
 void freestaticsyms(void) 
 {
-  	// g points at current node, prev at the previous one
   	symt *g, *prev = NULL;
 
-  	// Walk the global table looking for static entries
   	for(g = Globhead; g != NULL; g = g->next) 
   	{
     		if(g->class == C_STATIC) 
     		{
 
-      			// If there's a previous node, rearrange the prev pointer
-      			// to skip over the current node. If not, g is the head, so do the same to Globhead
       			if(prev != NULL)
 				prev->next = g->next;
       			else
 				Globhead->next = g->next;
 
-      			// If g is the tail, point Globtail at the previous node (if there is one), or Globhead
       			if(g == Globtail) 
       			{
 				if(prev != NULL)
@@ -292,11 +243,9 @@ void freestaticsyms(void)
     		}
   	}
 
-  	// Point prev at g before we move up to the next node
   	prev = g;
 }
 
-// Dump a single symbol
 static void dumpsym(symt *sym, int indent) 
 {
   	int i;
@@ -422,7 +371,6 @@ static void dumpsym(symt *sym, int indent)
   	}
 }
 
-// Dump one symbol table
 void dumptable(symt *head, char *name, int indent) 
 {
   	symt *sym;
