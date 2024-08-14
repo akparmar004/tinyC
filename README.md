@@ -37,9 +37,10 @@ jarvis file.c
 ```
 Output : 
 ```terminal
-eren@the-great-ak:./a.out
+eren@the-great-ak: ls
+file.c a.out
+eren@the-great-ak: a.out
 20
-eren@the-great-ak:
 ```
 Now let's execute using option : 
 ```
