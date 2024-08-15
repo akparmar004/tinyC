@@ -8,14 +8,14 @@ SRCS= src/Code_generator/cg.c src/Parser/decl.c src/Parser/expr.c \
       src/Tree/opt.c src/Lexical_scanner/scan.c src/Parser/stmt.c \
       src/Symbol/sym.c src/Tree/tree.c src/Symbol/types.c	 
 
-jarvis: $(SRCS) $(HSRCS)
-	cc -o bin/jarvis -g -Wall -DINCDIR=\"$(INCDIR)\" $(SRCS)
+tinyC: $(SRCS) $(HSRCS)
+	cc -o bin/tinyC -g -Wall -DINCDIR=\"$(INCDIR)\" $(SRCS)
 
 incdir.h:
 	echo "#define INCDIR \"$(INCDIR)\"" > include/incdir.h
 
-install: bin/jarvis
+install: bin/tinyC
 	mkdir -p $(INCDIR)
 	rsync -a include/. $(INCDIR)
-	cp bin/jarvis $(BINDIR)
-	chmod +x $(BINDIR)/jarvis
+	cp bin/tinyC $(BINDIR)
+	chmod +x $(BINDIR)/tinyC
