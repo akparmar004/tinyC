@@ -1,4 +1,4 @@
-# Jarvis : C Compiler implementation
+# tinyC : C Compiler implementation
 
 A C Compiler implementation followed by book "Modern Compiler implementation in C"
 
@@ -6,7 +6,7 @@ A C Compiler implementation followed by book "Modern Compiler implementation in 
 
 make command : 
 ```
-make jarvis
+make tinyC
 ```
 ## Usage
 ### Options :
@@ -33,20 +33,16 @@ void main()
 ```
 To execute above code :
 ```
-eren@the-great-ak: jarvis file.c
+tinyC file.c
 ```
 Output : 
-```shell
-eren@the-great-ak: ls
-file.c a.out
-eren@the-great-ak: ./a.out
+```
+: ./a.out
 20
 ```
 Now let's execute using option : 
-```shell
-eren@the-great-ak: jarvis -S file.c
-eren@the-great-ak: ls
-a.out file.c file.s
+```
+tinyC -S file.c
 ```
 Generated assembly file using -S option which is file.s below :
 ```assembly
