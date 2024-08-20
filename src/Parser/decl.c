@@ -9,7 +9,7 @@ static void enum_declaration(void);
 
 int parse_type(symt **ctype, int *class) 
 {
-  	int type, exstatic = 1;
+  	int type = 0, exstatic = 1;
 
   	while(exstatic) 
 	{
@@ -226,7 +226,7 @@ static symt *scalar_declaration(char *varname, int type, symt *ctype, int class,
 
 static symt *array_declaration(char *varname, int type, symt *ctype, int class) 
 {
-  	symt *sym;		
+  	symt *sym = NULL;		
 	int nelems = -1;		
   	int maxelems;			
   	int *initlist;		
@@ -254,6 +254,7 @@ static symt *array_declaration(char *varname, int type, symt *ctype, int class)
 
     		case C_LOCAL:
       			sym = addlocl(varname, pointer_to(type), ctype, S_ARRAY, 0);
+			sym -> st_hasaddr = 1;
       		break;
     		default:
       			fatal("Declaration of array parameters is not implemented");
@@ -374,8 +375,8 @@ static symt *function_declaration(char *funcname, int type, symt *ctype, int cla
 {
   	ast *tree, *finalstmt;
   	symt *oldfuncsym, *newfuncsym = NULL;
-  	int endlabel, paramcnt;
-
+  	int endlabel = 0, paramcnt;
+	int linenum = Line;
   	if((oldfuncsym = findsymbol(funcname)) != NULL)
     		if(oldfuncsym->stype != S_FUNCTION)
       			oldfuncsym = NULL;
@@ -422,6 +423,7 @@ static symt *function_declaration(char *funcname, int type, symt *ctype, int cla
   	}
   	tree = mkastunary(A_FUNCTION, type, ctype, tree, oldfuncsym, endlabel);
 
+	tree -> linenum = linenum;
   	tree = optimise(tree);
 
   	if(O_dumpAST) 
@@ -640,7 +642,7 @@ int declaration_list(symt **ctype, int class, int et1, int et2, ast **gluetree)
 {	
   	int inittype, type;
   	symt *sym;
-  	ast *tree;
+  	ast *tree = NULL;
   	*gluetree = NULL;
 
   	if((inittype = parse_type(ctype, &class)) == -1)

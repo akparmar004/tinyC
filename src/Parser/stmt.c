@@ -156,10 +156,10 @@ static ast *continue_statement(void)
 static ast *switch_statement(void) 
 {
   	ast *left, *body, *n, *c;
-  	ast *casetree = NULL, *casetail;
+  	ast *casetree = NULL, *casetail =NULL;
   	int inloop = 1, casecount = 0;
   	int seendefault = 0;
-  	int ASTop, casevalue;
+  	int ASTop, casevalue = 0	;
 
   	scan(&Token);
   	lparen();
@@ -244,6 +244,7 @@ static ast *single_statement(void)
 {
   	ast *stmt;
    	symt *ctype;
+  	int linenum = Line;
 
   	switch (Token.token) 
   	{
@@ -253,12 +254,14 @@ static ast *single_statement(void)
     		case T_LBRACE:
       			lbrace();
       			stmt = compound_statement(0);
+			stmt->linenum = linenum;
       			rbrace();
       			return stmt;
     		case T_IDENT:
       			if(findtypedef(Text) == NULL) 
       			{
 				stmt = binexpr(0);
+				stmt->linenum = linenum;
 				semi();
 				
 				return stmt;
@@ -273,26 +276,41 @@ static ast *single_statement(void)
       			declaration_list(&ctype, C_LOCAL, T_SEMI, T_EOF, &stmt);
       			semi();
       			return (stmt);		
-    		case T_IF:
-      			return (if_statement());
+    		 case T_IF:
+      			stmt = if_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		case T_WHILE:
-      			return (while_statement());
+      			stmt = while_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		case T_FOR:
-      			return (for_statement());
+      			stmt = for_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		case T_RETURN:
-      			return (return_statement());
+      			stmt = return_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		case T_BREAK:
-      			return (break_statement());
+      			stmt = break_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		case T_CONTINUE:
-      			return (continue_statement());
+      			stmt = continue_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		case T_SWITCH:
-      			return (switch_statement());
+      			stmt = switch_statement();
+      			stmt->linenum = linenum;
+      			return stmt;
     		default:
       			stmt = binexpr(0);
+      			stmt->linenum = linenum;
       			semi();
       			return stmt;
   	}
-  	return NULL;
+  	return NULL;	
 }
 
 ast *compound_statement(int inswitch) 

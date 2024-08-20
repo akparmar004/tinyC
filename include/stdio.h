@@ -1,3 +1,4 @@
+
 #ifndef _STDIO_H_
 # define _STDIO_H_
 
@@ -30,9 +31,11 @@ int putchar(int c);
 int puts(char *s);
 FILE *popen(char *command, char *type);
 int pclose(FILE *stream);
+int fflush(FILE *stream);
 
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
 
 #endif	// _STDIO_H_
+

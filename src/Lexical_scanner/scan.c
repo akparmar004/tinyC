@@ -2,7 +2,7 @@
 #include "../../include/data.h"
 #include "../../include/decl.h"
 
-//lexical Scaner
+//lexical scaner
 
 static int chrpos(char *s, int c) 
 {

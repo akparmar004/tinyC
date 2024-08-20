@@ -37,7 +37,7 @@ static char *do_compile(char *filename)
 {
   	char cmd[TEXTLEN];
 
-  	Outfilename = alter_suffix(filename, 's');
+  	Outfilename = alter_suffix(filename, 'q');
   	if(Outfilename == NULL) 
   	{
     		fprintf(stderr, "Error: %s has no suffix, try .c on the end\n", filename);
@@ -67,7 +67,7 @@ static char *do_compile(char *filename)
     		printf("compiling %s\n", filename);
   	scan(&Token);			
   	Peektoken.token = 0;		
-  	genpreamble();			
+  	genpreamble(filename);			
   	global_declarations();		
   	genpostamble();			
   	fclose(Outfile);		
@@ -81,6 +81,32 @@ static char *do_compile(char *filename)
 
   	freestaticsyms();		//Free any static symbols in file
   	return Outfilename;
+}
+
+char *do_qbe(char *filename) 
+{
+  	char cmd[TEXTLEN];
+  	int err;
+
+  	char *outfilename = alter_suffix(filename, 's');
+  	if(outfilename == NULL) 
+  	{
+    		fprintf(stderr, "Error: %s has no suffix, try .qbe on the end\n", filename);
+    		exit(1);
+  	}
+  	
+  	snprintf(cmd, TEXTLEN, "%s %s %s", QBECMD, outfilename, filename);
+  	if(O_verbose)
+    		printf("%s\n", cmd);
+  	
+  	err = system(cmd);
+  	if(err != 0) 
+  	{
+    		fprintf(stderr, "QBE translation of %s failed\n", filename);
+    		exit(1);
+  	}
+  	
+  	return outfilename;
 }
 
 char *do_assemble(char *filename) 
@@ -155,7 +181,7 @@ enum { MAXOBJ = 100 };
 int main(int argc, char **argv) 
 {
   	char *outfilename = AOUT;
-  	char *asmfile, *objfile;
+  	char *qbefile, *asmfile, *objfile;
   	char *objlist[MAXOBJ];
   	int i, j, objcnt = 0;
 
@@ -209,9 +235,10 @@ int main(int argc, char **argv)
 
   	while(i < argc) 
   	{
-    		asmfile = do_compile(argv[i]);	
+    		qbefile = do_compile(argv[i]);	
+    		asmfile = do_qbe(qbefile);
 
-    		if (O_dolink || O_assemble) 
+    		if(O_dolink || O_assemble) 
     		{
       			objfile = do_assemble(asmfile);	
       			if(objcnt == (MAXOBJ - 2)) 
@@ -224,7 +251,10 @@ int main(int argc, char **argv)
     		}
 
     		if (!O_keepasm)		
+    		{
+    			unlink(qbefile);
       			unlink(asmfile);		
+      		}
     		i++;
   	}	
 

@@ -104,7 +104,7 @@ static ast *member_access(ast *left, int withpointer) {
 
   	left->rvalue = 1;
 
-  	right = mkastleaf(A_INTLIT, P_INT, NULL, NULL, m->st_posn);
+  	right = mkastleaf(A_INTLIT, P_LONG, NULL, NULL, m->st_posn);
 
   	left = mkastnode(A_ADD, pointer_to(m->type), m->ctype, left, NULL, right, NULL, 0);
   	left = mkastunary(A_DEREF, m->type, m->ctype, left, NULL, 0);
@@ -125,7 +125,7 @@ static ast *paren_expression(int ptp)
   		case T_IDENT:
     			if(findtypedef(Text) == NULL) 
     			{
-      				n = binexpr(0);	// ptp is zero as expression inside ( )
+      				n = binexpr(0);
       				break;
     			}
   		case T_VOID:
@@ -342,7 +342,7 @@ static int op_precedence(int tokentype)
 
 static ast *prefix(int ptp) 
 {
-  	ast *tree;
+  	ast *tree = NULL;
   	switch(Token.token) 
   	{
   		case T_AMPER:
@@ -357,11 +357,12 @@ static ast *prefix(int ptp)
 
     			tree->op = A_ADDR;
     			tree->type = pointer_to(tree->type);
+    			tree->sym->st_hasaddr = 1; 
     			break;
   		case T_STAR:
     			scan(&Token);
     			tree = prefix(ptp);
-
+			tree -> rvalue = 1;
     			if (!ptrtype(tree->type))
       				fatal("* operator must be followed by an expression of pointer type");
 
@@ -403,7 +404,7 @@ static ast *prefix(int ptp)
     			scan(&Token);
     			tree = prefix(ptp);
 
-    			if (tree->op != A_IDENT)
+    			if(tree->op != A_IDENT)
       				fatal("-- operator must be followed by an identifier");
 
     			tree = mkastunary(A_PREDEC, tree->type, tree->ctype, tree, NULL, 0);
