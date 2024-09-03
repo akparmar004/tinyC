@@ -1,18 +1,18 @@
-#include<defs.h>
-#include<data.h>
-#include<decl.h>
+#include "../../include/defs.h"
+#include "../../include/data.h"
+#include "../../include/decl.h"
 
 //code generator for armv6
 
 static int freereg[4];
-static char *reglist = {"r4", "r5", "r6", "r7"};
+static char *reglist[4] = {"r4", "r5", "r6", "r7"};
 
 void freeall_register(void)
 {
 	freereg[0] = freereg[1] = freereg[2] = freereg[3] = 1; 
 }
 
-static int alloc_register(void)
+int alloc_register(void)
 {
 	for(int i = 0;i < 4; i++)
 	{
@@ -102,18 +102,6 @@ void funcpostamble(int id)
   	fputs("\tsub\tsp, fp, #4\n" "\tpop\t{fp, pc}\n" "\t.align\t2\n", Outfile);
 }
 
-static void set_var_offset(int id) 
-{
-  	int offset = 0;
-
-  	for(int i = 0; i < id; i++) 
-  	{
-    		if(Symtable[i].stype == S_VARIABLE)
-      			offset += 4;
-  	}
-  	fprintf(Outfile, "\tldr\tr3, .L2+%d\n", offset);
-}
-
 int cgloadint(int value, int type)
 {
 	int r = alloc_register();
@@ -128,6 +116,18 @@ int cgloadint(int value, int type)
     		fprintf(Outfile, "\tldr\t%s, [r3]\n", reglist[r]);
 	}
 	return r;
+}
+
+static void set_var_offset(int id) 
+{
+  	int offset = 0;
+
+  	for(int i = 0; i < id; i++) 
+  	{
+    		if(Symtable[i].stype == S_VARIABLE)
+      			offset += 4;
+  	}
+  	fprintf(Outfile, "\tldr\tr3, .L2+%d\n", offset);
 }
 
 int cgloadglob(int id) 
