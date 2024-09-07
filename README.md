@@ -1,6 +1,6 @@
 # tinyC : C Compiler implementation
 
-A C Compiler implementation followed by book "Modern Compiler implementation in C"
+A C Compiler implementation as shown in (https://github.com/DoctorWkt/acwj)
 
 ## Building
 
